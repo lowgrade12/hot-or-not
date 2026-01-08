@@ -1,13 +1,6 @@
 (function () {
   "use strict";
 
-  // ============================================
-  // PAIRWISE RANKING PLUGIN FOR STASH
-  // Simplified - Direct rating updates only
-  // ============================================
-
-  const PLUGIN_ID = "stash-battle";
-
   // Current comparison pair and mode
   let currentPair = { left: null, right: null };
   let currentRanks = { left: null, right: null };
@@ -515,7 +508,7 @@
   // RATING LOGIC
   // ============================================
 
-  function handleComparison(winnerId, loserId, winnerCurrentRating, loserCurrentRating) {
+  function handleComparison(winnerId, loserId, winnerCurrentRating, loserCurrentRating, loserRank = null) {
     const winnerRating = winnerCurrentRating || 50;
     const loserRating = loserCurrentRating || 50;
     
@@ -526,6 +519,7 @@
     if (currentMode === "gauntlet" || currentMode === "champion") {
       // In gauntlet/champion, only the champion/falling scene changes rating
       // Defenders stay the same (they're just benchmarks)
+      // EXCEPT: if the defender is rank #1, they lose 1 point when defeated
       const isChampionWinner = gauntletChampion && winnerId === gauntletChampion.id;
       const isFallingWinner = gauntletFalling && gauntletFallingScene && winnerId === gauntletFallingScene.id;
       const isChampionLoser = gauntletChampion && loserId === gauntletChampion.id;
@@ -540,6 +534,11 @@
       }
       if (isChampionLoser || isFallingLoser) {
         loserLoss = Math.max(1, Math.round(kFactor * expectedWinner));
+      }
+      
+      // Special case: if defender was rank #1 and lost, drop their rating by 1
+      if (loserRank === 1 && !isChampionLoser && !isFallingLoser) {
+        loserLoss = 1;
       }
     } else {
       // Swiss mode: True ELO - both change based on expected outcome
@@ -894,6 +893,9 @@
     const winnerRating = parseInt(winnerCard.dataset.rating) || 50;
     const loserCard = document.querySelector(`.pwr-scene-card[data-scene-id="${loserId}"]`);
     const loserRating = parseInt(loserCard?.dataset.rating) || 50;
+    
+    // Get the loser's rank for #1 dethrone logic
+    const loserRank = loserId === currentPair.left.id ? currentRanks.left : currentRanks.right;
 
     // Handle gauntlet mode (champion tracking)
     if (currentMode === "gauntlet") {
@@ -936,8 +938,8 @@
         }
       }
       
-      // Normal climbing - calculate rating changes
-      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = handleComparison(winnerId, loserId, winnerRating, loserRating);
+      // Normal climbing - calculate rating changes (pass loserRank for #1 dethrone)
+      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = handleComparison(winnerId, loserId, winnerRating, loserRating, loserRank);
       
       if (gauntletChampion && winnerId === gauntletChampion.id) {
         // Champion won - add loser to defeated list and continue climbing
@@ -982,8 +984,8 @@
     if (currentMode === "champion") {
       const winnerScene = winnerId === currentPair.left.id ? currentPair.left : currentPair.right;
       
-      // Calculate rating changes (only champion changes, defender stays same)
-      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = handleComparison(winnerId, loserId, winnerRating, loserRating);
+      // Calculate rating changes (pass loserRank for #1 dethrone)
+      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = handleComparison(winnerId, loserId, winnerRating, loserRating, loserRank);
       
       if (gauntletChampion && winnerId === gauntletChampion.id) {
         // Champion won - continue climbing
