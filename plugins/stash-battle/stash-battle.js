@@ -594,9 +594,9 @@
     let rankDisplay = '';
     if (rank !== null && rank !== undefined) {
       if (typeof rank === 'number') {
-        rankDisplay = `<span class="pwr-performer-rank">#${rank}</span>`;
+        rankDisplay = `<span class="pwr-performer-rank pwr-scene-rank">#${rank}</span>`;
       } else {
-        rankDisplay = `<span class="pwr-performer-rank">${rank}</span>`;
+        rankDisplay = `<span class="pwr-performer-rank pwr-scene-rank">${rank}</span>`;
       }
     }
     
@@ -607,26 +607,26 @@
     }
 
     return `
-      <div class="pwr-performer-card" data-performer-id="${performer.id}" data-side="${side}" data-rating="${performer.rating100 || 50}">
-        <div class="pwr-performer-image-container" data-performer-url="/performers/${performer.id}">
+      <div class="pwr-performer-card pwr-scene-card" data-performer-id="${performer.id}" data-side="${side}" data-rating="${performer.rating100 || 50}">
+        <div class="pwr-performer-image-container pwr-scene-image-container" data-performer-url="/performers/${performer.id}">
           ${screenshotPath 
-            ? `<img class="pwr-performer-image" src="${screenshotPath}" alt="${title}" loading="lazy" />`
-            : `<div class="pwr-performer-image pwr-no-image">No Screenshot</div>`
+            ? `<img class="pwr-performer-image pwr-scene-image" src="${screenshotPath}" alt="${title}" loading="lazy" />`
+            : `<div class="pwr-performer-image pwr-scene-image pwr-no-image">No Screenshot</div>`
           }
           ${previewPath ? `<video class="pwr-hover-preview" src="${previewPath}" loop playsinline></video>` : ''}
-          <div class="pwr-performer-duration">${formatDuration(duration)}</div>
+          <div class="pwr-performer-duration pwr-scene-duration">${formatDuration(duration)}</div>
           ${streakDisplay}
           <div class="pwr-click-hint">Click to open performer</div>
         </div>
         
-        <div class="pwr-performer-body" data-winner="${performer.id}">
-          <div class="pwr-performer-info">
-            <div class="pwr-performer-title-row">
-              <h3 class="pwr-performer-title">${title}</h3>
+        <div class="pwr-performer-body pwr-scene-body" data-winner="${performer.id}">
+          <div class="pwr-performer-info pwr-scene-info">
+            <div class="pwr-performer-title-row pwr-scene-title-row">
+              <h3 class="pwr-performer-title pwr-scene-title">${title}</h3>
               ${rankDisplay}
             </div>
             
-            <div class="pwr-performer-meta">
+            <div class="pwr-performer-meta pwr-scene-meta">
               <div class="pwr-meta-item"><strong>Studio:</strong> ${studio}</div>
               <div class="pwr-meta-item"><strong>Performers:</strong> ${performers}</div>
               <div class="pwr-meta-item"><strong>Date:</strong> ${performer.date || '<span class="pwr-none">None</span>'}</div>
