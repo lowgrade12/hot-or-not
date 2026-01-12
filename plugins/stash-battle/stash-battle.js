@@ -915,6 +915,63 @@ async function fetchPerformerCount(performerFilter = {}) {
       return { performers: await fetchRandomPerformers(2), ranks: [null, null], isVictory: false };
     }
 
+    // If no champion yet, start with a random challenger vs the lowest rated performer
+    if (!gauntletChampion) {
+      gauntletDefeated = [];
+      
+      // Pick random performer as challenger
+      const randomIndex = Math.floor(Math.random() * performers.length);
+      const challenger = performers[randomIndex];
+      
+      // Start at the bottom - find lowest rated performer that isn't the challenger
+      const lowestRated = performers
+        .filter(s => s.id !== challenger.id)
+        .sort((a, b) => (a.rating100 || 0) - (b.rating100 || 0))[0];
+      
+      const lowestIndex = performers.findIndex(s => s.id === lowestRated.id);
+      
+      gauntletChampionRank = randomIndex + 1;
+      
+      return { 
+        performers: [challenger, lowestRated], 
+        ranks: [randomIndex + 1, lowestIndex + 1],
+        isVictory: false
+      };
+    }
+
+    // Champion exists - find next opponent they haven't defeated yet
+    const championIndex = performers.findIndex(s => s.id === gauntletChampion.id);
+    
+    gauntletChampionRank = championIndex + 1;
+    
+    // Find opponents above champion that haven't been defeated
+    const remainingOpponents = performers.filter((s, idx) => {
+      if (s.id === gauntletChampion.id) return false;
+      if (gauntletDefeated.includes(s.id)) return false;
+      return idx < championIndex || (s.rating100 || 0) >= (gauntletChampion.rating100 || 0);
+    });
+    
+    // If no opponents left, champion has won!
+    if (remainingOpponents.length === 0) {
+      gauntletChampionRank = 1;
+      return { 
+        performers: [gauntletChampion], 
+        ranks: [1],
+        isVictory: true
+      };
+    }
+    
+    // Pick the next highest-ranked remaining opponent
+    const nextOpponent = remainingOpponents[remainingOpponents.length - 1];
+    const nextOpponentIndex = performers.findIndex(s => s.id === nextOpponent.id);
+    
+    return { 
+      performers: [gauntletChampion, nextOpponent], 
+      ranks: [championIndex + 1, nextOpponentIndex + 1],
+      isVictory: false
+    };
+  }
+
   // ============================================
   // WRAPPER FUNCTIONS (Dispatch based on battleType)
   // ============================================
@@ -951,164 +1008,6 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
   }
 
-function createVictoryScreen(champion) {
-    const file = champion.files && champion.files[0] ? champion.files[0] : {};
-    let title = champion.title;
-    if (!title && file.path) {
-      const pathParts = file.path.split(/[/\\]/);
-      title = pathParts[pathParts.length - 1].replace(/\.[^/.]+$/, "");
-    }
-    if (!title) {
-      title = `Scene #${champion.id}`;
-    }
-    
-    const screenshotPath = champion.paths ? champion.paths.screenshot : null;
-    
-    return `
-      <div class="pwr-victory-screen">
-        <div class="pwr-victory-crown">👑</div>
-        <h2 class="pwr-victory-title">CHAMPION!</h2>
-        <div class="pwr-victory-scene">
-          ${screenshotPath 
-            ? `<img class="pwr-victory-image" src="${screenshotPath}" alt="${title}" />`
-            : `<div class="pwr-victory-image pwr-no-image">No Screenshot</div>`
-          }
-        </div>
-        <h3 class="pwr-victory-name">${title}</h3>
-        <p class="pwr-victory-stats">Conquered all ${totalScenesCount} scenes with a ${gauntletWins} win streak!</p>
-        <button id="pwr-new-gauntlet" class="btn btn-primary">Start New Gauntlet</button>
-      </div>
-    `;
-  }
-
-  function showPlacementScreen(scene, rank, finalRating) {
-    const comparisonArea = document.getElementById("pwr-comparison-area");
-    if (!comparisonArea) return;
-    
-    const file = scene.files && scene.files[0] ? scene.files[0] : {};
-    let title = scene.title;
-    if (!title && file.path) {
-      const pathParts = file.path.split(/[/\\]/);
-      title = pathParts[pathParts.length - 1].replace(/\.[^/.]+$/, "");
-    }
-    if (!title) {
-      title = `Scene #${scene.id}`;
-    }
-    
-    const screenshotPath = scene.paths ? scene.paths.screenshot : null;
-    
-    comparisonArea.innerHTML = `
-      <div class="pwr-victory-screen">
-        <div class="pwr-victory-crown">📍</div>
-        <h2 class="pwr-victory-title">PLACED!</h2>
-        <div class="pwr-victory-scene">
-          ${screenshotPath 
-            ? `<img class="pwr-victory-image" src="${screenshotPath}" alt="${title}" />`
-            : `<div class="pwr-victory-image pwr-no-image">No Screenshot</div>`
-          }
-        </div>
-        <h3 class="pwr-victory-name">${title}</h3>
-        <p class="pwr-victory-stats">
-          Rank <strong>#${rank}</strong> of ${totalScenesCount}<br>
-          Rating: <strong>${finalRating}/100</strong>
-        </p>
-        <button id="pwr-new-gauntlet" class="btn btn-primary">Start New Run</button>
-      </div>
-    `;
-    
-    // Hide status and actions
-    const statusEl = document.getElementById("pwr-gauntlet-status");
-    const actionsEl = document.querySelector(".pwr-actions");
-    if (statusEl) statusEl.style.display = "none";
-    if (actionsEl) actionsEl.style.display = "none";
-    
-    // Reset state
-    gauntletFalling = false;
-    gauntletFallingItem = null;
-    gauntletChampion = null;
-    gauntletWins = 0;
-    gauntletDefeated = [];
-    
-    // Attach button handler
-    const newBtn = comparisonArea.querySelector("#pwr-new-gauntlet");
-    if (newBtn) {
-      newBtn.addEventListener("click", () => {
-        if (actionsEl) actionsEl.style.display = "";
-        loadNewPair();
-      });
-    }
-  }
-  
-  // Update scene rating in Stash database
-  
-
-  // ============================================
-  // RATING LOGIC
-  // ============================================
-
-  function handleComparison(winnerId, loserId, winnerCurrentRating, loserCurrentRating, loserRank = null) {
-    const winnerRating = winnerCurrentRating || 50;
-    const loserRating = loserCurrentRating || 50;
-    
-    const ratingDiff = loserRating - winnerRating;
-    
-    let winnerGain = 0, loserLoss = 0;
-    
-    if (currentMode === "gauntlet" || currentMode === "champion") {
-      // In gauntlet/champion, only the champion/falling scene changes rating
-      // Defenders stay the same (they're just benchmarks)
-      // EXCEPT: if the defender is rank #1, they lose 1 point when defeated
-      const isChampionWinner = gauntletChampion && winnerId === gauntletChampion.id;
-      const isFallingWinner = gauntletFalling && gauntletFallingItem && winnerId === gauntletFallingItem.id;
-      const isChampionLoser = gauntletChampion && loserId === gauntletChampion.id;
-      const isFallingLoser = gauntletFalling && gauntletFallingItem && loserId === gauntletFallingItem.id;
-      
-      const expectedWinner = 1 / (1 + Math.pow(10, ratingDiff / 40));
-      const kFactor = 8;
-      
-      // Only the active scene (champion or falling) gets rating changes
-      if (isChampionWinner || isFallingWinner) {
-        winnerGain = Math.max(1, Math.round(kFactor * (1 - expectedWinner)));
-      }
-      if (isChampionLoser || isFallingLoser) {
-        loserLoss = Math.max(1, Math.round(kFactor * expectedWinner));
-      }
-      
-      // Special case: if defender was rank #1 and lost, drop their rating by 1
-      if (loserRank === 1 && !isChampionLoser && !isFallingLoser) {
-        loserLoss = 1;
-      }
-    } else {
-      // Swiss mode: True ELO - both change based on expected outcome
-      const expectedWinner = 1 / (1 + Math.pow(10, ratingDiff / 40));
-      const kFactor = 8;
-      
-      winnerGain = Math.max(1, Math.round(kFactor * (1 - expectedWinner)));
-      loserLoss = Math.max(1, Math.round(kFactor * expectedWinner));
-    }
-    
-    const newWinnerRating = Math.min(100, Math.max(1, winnerRating + winnerGain));
-    const newLoserRating = Math.min(100, Math.max(1, loserRating - loserLoss));
-    
-    const winnerChange = newWinnerRating - winnerRating;
-    const loserChange = newLoserRating - loserRating;
-    
-    // Update scenes in Stash (only if changed)
-    if (winnerChange !== 0) updateSceneRating(winnerId, newWinnerRating);
-    if (loserChange !== 0) updateSceneRating(loserId, newLoserRating);
-    
-    return { newWinnerRating, newLoserRating, winnerChange, loserChange };
-  }
-  
-  // Called when gauntlet champion loses - place them one below the winner
-  function finalizeGauntletLoss(championId, winnerRating) {
-    // Set champion rating to just below the scene that beat them
-    const newRating = Math.max(1, winnerRating - 1);
-    updateSceneRating(championId, newRating);
-    return newRating;
-  }
-
-  // ============================================
   // UI COMPONENTS
   // ============================================
 
@@ -1684,7 +1583,6 @@ function createVictoryScreen(champion) {
   // MODAL & NAVIGATION
   // ============================================
 
-  function shouldShowButton()
   function shouldShowButton() {
     const path = window.location.pathname;
     // Show on /scenes or /performers pages
