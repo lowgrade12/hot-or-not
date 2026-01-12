@@ -10,7 +10,7 @@
   let gauntletChampionRank = 0; // Current rank position (1 = top)
   let gauntletDefeated = []; // IDs of performers defeated in current run
   let gauntletFalling = false; // True when champion lost and is finding their floor
-  let gauntletFallingScene = null; // The performer that's falling to find its position
+  let gauntletFallingPerformer = null; // The performer that's falling to find its position
   let totalPerformersCount = 0; // Total performers for position display
   let disableChoice = false; // Track when inputs should be disabled to prevent multiple events
   let battleType = "performers"; // This plugin is for performers only 
@@ -124,7 +124,7 @@
     const rating1 = performer1.rating100 || 50;
 
     // Find performers within ±15 rating points
-    const similarScenes = performers.filter(s => {
+    const similarPerformers = performers.filter(s => {
       if (s.id === performer1.id) return false;
       const rating = s.rating100 || 50;
       return Math.abs(rating - rating1) <= 15;
@@ -132,19 +132,19 @@
 
     let performer2;
     let performer2Index;
-    if (similarScenes.length > 0) {
+    if (similarPerformers.length > 0) {
       // Pick random from similar-rated performers
-      performer2 = similarScenes[Math.floor(Math.random() * similarScenes.length)];
+      performer2 = similarPerformers[Math.floor(Math.random() * similarPerformers.length)];
       performer2Index = performers.findIndex(s => s.id === performer2.id);
     } else {
       // No similar performers, pick closest
-      const otherScenes = performers.filter(s => s.id !== performer1.id);
-      otherScenes.sort((a, b) => {
+      const otherPerformers = performers.filter(s => s.id !== performer1.id);
+      otherPerformers.sort((a, b) => {
         const diffA = Math.abs((a.rating100 || 50) - rating1);
         const diffB = Math.abs((b.rating100 || 50) - rating1);
         return diffA - diffB;
       });
-      performer2 = otherScenes[0];
+      performer2 = otherPerformers[0];
       performer2Index = performers.findIndex(s => s.id === performer2.id);
     }
 
@@ -184,12 +184,12 @@
     }
 
     // Handle falling mode - find next opponent BELOW to test against
-    if (gauntletFalling && gauntletFallingScene) {
-      const fallingIndex = performers.findIndex(s => s.id === gauntletFallingScene.id);
+    if (gauntletFalling && gauntletFallingPerformer) {
+      const fallingIndex = performers.findIndex(s => s.id === gauntletFallingPerformer.id);
       
       // Find opponents below (higher index) that haven't been tested
       const belowOpponents = performers.filter((s, idx) => {
-        if (s.id === gauntletFallingScene.id) return false;
+        if (s.id === gauntletFallingPerformer.id) return false;
         if (gauntletDefeated.includes(s.id)) return false;
         return idx > fallingIndex; // Below in ranking
       });
@@ -198,10 +198,10 @@
         // Hit the bottom - they're the lowest, place them here
         const finalRank = performers.length;
         const finalRating = 1; // Lowest rating
-        updatePerformerRating(gauntletFallingScene.id, finalRating);
+        updatePerformerRating(gauntletFallingPerformer.id, finalRating);
         
         return {
-          performers: [gauntletFallingScene],
+          performers: [gauntletFallingPerformer],
           ranks: [finalRank],
           isVictory: false,
           isFalling: true,
@@ -218,7 +218,7 @@
         gauntletChampionRank = fallingIndex + 1;
         
         return {
-          performers: [gauntletFallingScene, nextBelow],
+          performers: [gauntletFallingPerformer, nextBelow],
           ranks: [fallingIndex + 1, nextBelowIndex + 1],
           isVictory: false,
           isFalling: true
@@ -231,7 +231,7 @@
       // Reset state
       gauntletDefeated = [];
       gauntletFalling = false;
-      gauntletFallingScene = null;
+      gauntletFallingPerformer = null;
       
       // Pick random performer as challenger
       const randomIndex = Math.floor(Math.random() * performers.length);
@@ -449,7 +449,7 @@
     
     // Reset state
     gauntletFalling = false;
-    gauntletFallingScene = null;
+    gauntletFallingPerformer = null;
     gauntletChampion = null;
     gauntletWins = 0;
     gauntletDefeated = [];
@@ -500,9 +500,9 @@
       // Defenders stay the same (they're just benchmarks)
       // EXCEPT: if the defender is rank #1, they lose 1 point when defeated
       const isChampionWinner = gauntletChampion && winnerId === gauntletChampion.id;
-      const isFallingWinner = gauntletFalling && gauntletFallingScene && winnerId === gauntletFallingScene.id;
+      const isFallingWinner = gauntletFalling && gauntletFallingPerformer && winnerId === gauntletFallingPerformer.id;
       const isChampionLoser = gauntletChampion && loserId === gauntletChampion.id;
-      const isFallingLoser = gauntletFalling && gauntletFallingScene && loserId === gauntletFallingScene.id;
+      const isFallingLoser = gauntletFalling && gauntletFallingPerformer && loserId === gauntletFallingPerformer.id;
       
       const expectedWinner = 1 / (1 + Math.pow(10, ratingDiff / 40));
       const kFactor = 8;
@@ -710,7 +710,7 @@
               gauntletChampionRank = 0;
               gauntletDefeated = [];
               gauntletFalling = false;
-              gauntletFallingScene = null;
+              gauntletFallingPerformer = null;
               // Show the actions again
               if (actionsEl) actionsEl.style.display = "";
               loadNewPair();
@@ -869,12 +869,12 @@
       const loserPerformer = loserId === currentPair.left.id ? currentPair.left : currentPair.right;
       
       // Check if we're in falling mode (finding floor after a loss)
-      if (gauntletFalling && gauntletFallingScene) {
-        if (winnerId === gauntletFallingScene.id) {
+      if (gauntletFalling && gauntletFallingPerformer) {
+        if (winnerId === gauntletFallingPerformer.id) {
           // Falling performer won - found their floor!
           // Set their rating to just above the performer they beat
           const finalRating = Math.min(100, loserRating + 1);
-          updatePerformerRating(gauntletFallingScene.id, finalRating);
+          updatePerformerRating(gauntletFallingPerformer.id, finalRating);
           
           // Final rank is one above the opponent (we beat them, so we're above them)
           const opponentRank = loserId === currentPair.left.id ? currentRanks.left : currentRanks.right;
@@ -886,7 +886,7 @@
           
           // Show placement screen after brief delay
           setTimeout(() => {
-            showPlacementScreen(gauntletFallingScene, finalRank, finalRating);
+            showPlacementScreen(gauntletFallingPerformer, finalRank, finalRating);
           }, 800);
           return;
         } else {
@@ -915,7 +915,7 @@
       } else if (gauntletChampion && winnerId !== gauntletChampion.id) {
         // Champion LOST - start falling to find their floor
         gauntletFalling = true;
-        gauntletFallingScene = loserPerformer; // The old champion is now falling
+        gauntletFallingPerformer = loserPerformer; // The old champion is now falling
         gauntletDefeated = [winnerId]; // They lost to this performer
         
         // Winner becomes the new climbing champion
@@ -1111,7 +1111,7 @@
           gauntletWins = 0;
           gauntletDefeated = [];
           gauntletFalling = false;
-          gauntletFallingScene = null;
+          gauntletFallingPerformer = null;
           
           // Update button states
           modal.querySelectorAll(".pwr-mode-btn").forEach((b) => {
@@ -1144,7 +1144,7 @@
           gauntletWins = 0;
           gauntletDefeated = [];
           gauntletFalling = false;
-          gauntletFallingScene = null;
+          gauntletFallingPerformer = null;
         }
         loadNewPair();
       });
@@ -1196,7 +1196,7 @@
             gauntletWins = 0;
             gauntletDefeated = [];
             gauntletFalling = false;
-            gauntletFallingScene = null;
+            gauntletFallingPerformer = null;
           }
           loadNewPair();
         }
