@@ -690,14 +690,11 @@ async function fetchPerformerCount(performerFilter = {}) {
 
   const allPerformers = result.findPerformers.performers || [];
   
-  // Filter out performers without images (check for null, undefined, and empty strings)
-  const performersWithImages = allPerformers.filter(p => p.image_path && p.image_path.trim() !== '');
-  
-  if (performersWithImages.length < 2) {
-    throw new Error("Not enough performers with images for comparison. You need at least 2 performers with images.");
+  if (allPerformers.length < 2) {
+    throw new Error("Not enough performers for comparison. You need at least 2 performers.");
   }
 
-  const shuffled = performersWithImages.sort(() => Math.random() - 0.5);
+  const shuffled = allPerformers.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, 2);
 }
 
@@ -726,21 +723,18 @@ async function fetchPerformerCount(performerFilter = {}) {
 
     const performers = result.findPerformers.performers || [];
     
-    // Filter out performers without images (check for null, undefined, and empty strings)
-    const performersWithImages = performers.filter(p => p.image_path && p.image_path.trim() !== '');
-    
-    if (performersWithImages.length < 2) {
+    if (performers.length < 2) {
       // Fallback to random if not enough rated performers
       return { performers: await fetchRandomPerformers(2), ranks: [null, null] };
     }
 
     // Pick a random performer, then find one with similar rating
-    const randomIndex = Math.floor(Math.random() * performersWithImages.length);
-    const performer1 = performersWithImages[randomIndex];
+    const randomIndex = Math.floor(Math.random() * performers.length);
+    const performer1 = performers[randomIndex];
     const rating1 = performer1.rating100 || 50;
 
     // Find performers within ±15 rating points
-    const similarPerformers = performersWithImages.filter(s => {
+    const similarPerformers = performers.filter(s => {
       if (s.id === performer1.id) return false;
       const rating = s.rating100 || 50;
       return Math.abs(rating - rating1) <= 15;
@@ -751,17 +745,17 @@ async function fetchPerformerCount(performerFilter = {}) {
     if (similarPerformers.length > 0) {
       // Pick random from similar-rated performers
       performer2 = similarPerformers[Math.floor(Math.random() * similarPerformers.length)];
-      performer2Index = performersWithImages.findIndex(s => s.id === performer2.id);
+      performer2Index = performers.findIndex(s => s.id === performer2.id);
     } else {
       // No similar performers, pick closest
-      const otherPerformers = performersWithImages.filter(s => s.id !== performer1.id);
+      const otherPerformers = performers.filter(s => s.id !== performer1.id);
       otherPerformers.sort((a, b) => {
         const diffA = Math.abs((a.rating100 || 50) - rating1);
         const diffB = Math.abs((b.rating100 || 50) - rating1);
         return diffA - diffB;
       });
       performer2 = otherPerformers[0];
-      performer2Index = performersWithImages.findIndex(s => s.id === performer2.id);
+      performer2Index = performers.findIndex(s => s.id === performer2.id);
     }
 
     return { 
@@ -795,21 +789,18 @@ async function fetchPerformerCount(performerFilter = {}) {
     });
 
     const performers = result.findPerformers.performers || [];
+    totalItemsCount = performers.length;
     
-    // Filter out performers without images (check for null, undefined, and empty strings)
-    const performersWithImages = performers.filter(p => p.image_path && p.image_path.trim() !== '');
-    totalItemsCount = performersWithImages.length;
-    
-    if (performersWithImages.length < 2) {
+    if (performers.length < 2) {
       return { performers: await fetchRandomPerformers(2), ranks: [null, null], isVictory: false, isFalling: false };
     }
 
     // Handle falling mode - find next opponent BELOW to test against
     if (gauntletFalling && gauntletFallingItem) {
-      const fallingIndex = performersWithImages.findIndex(s => s.id === gauntletFallingItem.id);
+      const fallingIndex = performers.findIndex(s => s.id === gauntletFallingItem.id);
       
       // Find opponents below (higher index) that haven't been tested
-      const belowOpponents = performersWithImages.filter((s, idx) => {
+      const belowOpponents = performers.filter((s, idx) => {
         if (s.id === gauntletFallingItem.id) return false;
         if (gauntletDefeated.includes(s.id)) return false;
         return idx > fallingIndex; // Below in ranking
@@ -817,7 +808,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       
       if (belowOpponents.length === 0) {
         // Hit the bottom - they're the lowest, place them here
-        const finalRank = performersWithImages.length;
+        const finalRank = performers.length;
         const finalRating = 1; // Lowest rating
         updatePerformerRating(gauntletFallingItem.id, finalRating);
         
@@ -833,7 +824,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       } else {
         // Get next opponent below (first one, closest to falling performer)
         const nextBelow = belowOpponents[0];
-        const nextBelowIndex = performersWithImages.findIndex(s => s.id === nextBelow.id);
+        const nextBelowIndex = performers.findIndex(s => s.id === nextBelow.id);
         
         // Update the falling performer's rank for display
         gauntletChampionRank = fallingIndex + 1;
@@ -855,15 +846,15 @@ async function fetchPerformerCount(performerFilter = {}) {
       gauntletFallingItem = null;
       
       // Pick random performer as challenger
-      const randomIndex = Math.floor(Math.random() * performersWithImages.length);
-      const challenger = performersWithImages[randomIndex];
+      const randomIndex = Math.floor(Math.random() * performers.length);
+      const challenger = performers[randomIndex];
       
       // Start at the bottom - find lowest rated performer that isn't the challenger
-      const lowestRated = performersWithImages
+      const lowestRated = performers
         .filter(s => s.id !== challenger.id)
         .sort((a, b) => (a.rating100 || 0) - (b.rating100 || 0))[0];
       
-      const lowestIndex = performersWithImages.findIndex(s => s.id === lowestRated.id);
+      const lowestIndex = performers.findIndex(s => s.id === lowestRated.id);
       
       // Challenger's current rank
       gauntletChampionRank = randomIndex + 1;
@@ -877,13 +868,13 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
 
     // Champion exists - find next opponent they haven't defeated yet
-    const championIndex = performersWithImages.findIndex(s => s.id === gauntletChampion.id);
+    const championIndex = performers.findIndex(s => s.id === gauntletChampion.id);
     
     // Update champion rank (1-indexed, so +1)
     gauntletChampionRank = championIndex + 1;
     
     // Find opponents above champion that haven't been defeated
-    const remainingOpponents = performersWithImages.filter((s, idx) => {
+    const remainingOpponents = performers.filter((s, idx) => {
       if (s.id === gauntletChampion.id) return false;
       if (gauntletDefeated.includes(s.id)) return false;
       // Only performers ranked higher (lower index) or same rating
@@ -903,7 +894,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     
     // Pick the next highest-ranked remaining opponent
     const nextOpponent = remainingOpponents[remainingOpponents.length - 1]; // Closest to champion
-    const nextOpponentIndex = performersWithImages.findIndex(s => s.id === nextOpponent.id);
+    const nextOpponentIndex = performers.findIndex(s => s.id === nextOpponent.id);
     
     return { 
       performers: [gauntletChampion, nextOpponent], 
@@ -938,12 +929,9 @@ async function fetchPerformerCount(performerFilter = {}) {
     });
 
     const performers = result.findPerformers.performers || [];
+    totalItemsCount = performers.length;
     
-    // Filter out performers without images (check for null, undefined, and empty strings)
-    const performersWithImages = performers.filter(p => p.image_path && p.image_path.trim() !== '');
-    totalItemsCount = performersWithImages.length;
-    
-    if (performersWithImages.length < 2) {
+    if (performers.length < 2) {
       return { performers: await fetchRandomPerformers(2), ranks: [null, null], isVictory: false };
     }
 
@@ -952,15 +940,15 @@ async function fetchPerformerCount(performerFilter = {}) {
       gauntletDefeated = [];
       
       // Pick random performer as challenger
-      const randomIndex = Math.floor(Math.random() * performersWithImages.length);
-      const challenger = performersWithImages[randomIndex];
+      const randomIndex = Math.floor(Math.random() * performers.length);
+      const challenger = performers[randomIndex];
       
       // Start at the bottom - find lowest rated performer that isn't the challenger
-      const lowestRated = performersWithImages
+      const lowestRated = performers
         .filter(s => s.id !== challenger.id)
         .sort((a, b) => (a.rating100 || 0) - (b.rating100 || 0))[0];
       
-      const lowestIndex = performersWithImages.findIndex(s => s.id === lowestRated.id);
+      const lowestIndex = performers.findIndex(s => s.id === lowestRated.id);
       
       gauntletChampionRank = randomIndex + 1;
       
@@ -972,12 +960,12 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
 
     // Champion exists - find next opponent they haven't defeated yet
-    const championIndex = performersWithImages.findIndex(s => s.id === gauntletChampion.id);
+    const championIndex = performers.findIndex(s => s.id === gauntletChampion.id);
     
     gauntletChampionRank = championIndex + 1;
     
     // Find opponents above champion that haven't been defeated
-    const remainingOpponents = performersWithImages.filter((s, idx) => {
+    const remainingOpponents = performers.filter((s, idx) => {
       if (s.id === gauntletChampion.id) return false;
       if (gauntletDefeated.includes(s.id)) return false;
       return idx < championIndex || (s.rating100 || 0) >= (gauntletChampion.rating100 || 0);
@@ -995,7 +983,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     
     // Pick the next highest-ranked remaining opponent
     const nextOpponent = remainingOpponents[remainingOpponents.length - 1];
-    const nextOpponentIndex = performersWithImages.findIndex(s => s.id === nextOpponent.id);
+    const nextOpponentIndex = performers.findIndex(s => s.id === nextOpponent.id);
     
     return { 
       performers: [gauntletChampion, nextOpponent], 
