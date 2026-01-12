@@ -68,6 +68,11 @@
     ethnicity
     country
     gender
+    scenes {
+      paths {
+        screenshot
+      }
+    }
   `;
 
 async function fetchSceneCount() {
@@ -411,7 +416,7 @@ async function fetchSceneCount() {
     if (battleType === "performers") {
       // Performer
       title = champion.name || `Performer #${champion.id}`;
-      imagePath = champion.image_path;
+      imagePath = getRandomPerformerImage(champion);
     } else {
       // Scene
       const file = champion.files && champion.files[0] ? champion.files[0] : {};
@@ -455,7 +460,7 @@ async function fetchSceneCount() {
     if (battleType === "performers") {
       // Performer
       title = item.name || `Performer #${item.id}`;
-      imagePath = item.image_path;
+      imagePath = getRandomPerformerImage(item);
     } else {
       // Scene
       const file = item.files && item.files[0] ? item.files[0] : {};
@@ -1109,12 +1114,32 @@ async function fetchPerformerCount(performerFilter = {}) {
     `;
   }
 
+  // Helper function to get a random scene screenshot for a performer
+  function getRandomPerformerImage(performer) {
+    // Check if performer has scenes with screenshots
+    if (performer.scenes && performer.scenes.length > 0) {
+      // Filter scenes that have a screenshot
+      const scenesWithScreenshots = performer.scenes.filter(scene => 
+        scene.paths && scene.paths.screenshot
+      );
+      
+      if (scenesWithScreenshots.length > 0) {
+        // Pick a random scene screenshot
+        const randomScene = scenesWithScreenshots[Math.floor(Math.random() * scenesWithScreenshots.length)];
+        return randomScene.paths.screenshot;
+      }
+    }
+    
+    // Fallback to performer's profile image
+    return performer.image_path || null;
+  }
+
   function createPerformerCard(performer, side, rank = null, streak = null) {
     // Performer name
     const name = performer.name || `Performer #${performer.id}`;
     
-    // Performer image
-    const imagePath = performer.image_path || null;
+    // Performer image - use random scene screenshot if available
+    const imagePath = getRandomPerformerImage(performer);
     
     // Performer metadata
     const birthdate = performer.birthdate || null;
