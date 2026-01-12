@@ -223,28 +223,43 @@
 /* Scene Image */
 .hon-scene-image-container {
   position: relative;
-  aspect-ratio: 2 / 3;
+  width: 100%;
   max-height: 70vh;
   overflow: hidden;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Performer images - adjust aspect ratio for better fit */
+/* Performer images - adjust for better fit */
 .hon-performer-image-container {
-  aspect-ratio: auto;
-  min-height: 250px;
-  max-height: 400px;
+  position: relative;
+  width: 100%;
+  max-height: 60vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hon-image-bg, #1a1a1a);
 }
 
 .hon-scene-image {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 70vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
   transition: opacity 0.3s ease;
   background: #000;
 }
 
 .hon-performer-image {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
   background: #1a1a1a;
 }
@@ -263,8 +278,10 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -668,9 +685,10 @@
 }
 
 .hon-victory-image {
-  width: 100%;
-  aspect-ratio: 2 / 3;
+  max-width: 100%;
   max-height: 60vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
 }
 
@@ -719,19 +737,6 @@
   border-radius: 8px;
   background: var(--hon-card-bg, #fff);
   box-shadow: var(--hon-card-shadow, 0 2px 8px rgba(0,0,0,0.06));
-}
-
-.hon-performer-image-container {
-  position: relative;
-  overflow: hidden;
-  background: var(--hon-image-bg, #f6f6f6);
-}
-
-.hon-performer-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  object-fit: cover;
 }
 
 .hon-performer-duration {
@@ -789,16 +794,3 @@
 .hon-performer-rank.hon-scene-rank {}
 
 /* End shim */
-
-/* Ensure the HotOrNot images fit vertically and horizontally */
-.hotornot-container .performer-card .performer-image-container img {
-    max-height: 70vh !important;
-    object-fit: contain !important;
-    width: auto !important;
-    height: auto !important;
-}
-
-/* Adjust the card size to prevent horizontal scrolling */
-.hotornot-container .performer-card {
-    max-width: 45vw !important;
-}
