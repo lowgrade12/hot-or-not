@@ -20,7 +20,7 @@ Stash Battle Performer presents you with two performers side-by-side and asks yo
 Recommend saving a backup of your database beforehand (Settings → Interface → Editing)
 
 ### Manual Download: 
-1. Download the `/plugins/stash-battle/` folder to your Stash plugins directory
+1. Download the `/plugins/stash-battle-performer/` folder to your Stash plugins directory
 
 ## Usage
 

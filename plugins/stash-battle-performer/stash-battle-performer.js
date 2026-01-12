@@ -29,7 +29,7 @@
     });
     const result = await response.json();
     if (result.errors) {
-      console.error("[Stash Battle] GraphQL error:", result.errors);
+      console.error("[Stash Battle Performer] GraphQL error:", result.errors);
       throw new Error(result.errors[0].message);
     }
     return result.data;
@@ -629,9 +629,9 @@
 
   function createMainUI() {
     return `
-      <div id="stash-battle-container" class="pwr-container">
+      <div id="stash-battle-performer-container" class="pwr-container">
         <div class="pwr-header">
-          <h1 class="pwr-title">⚔️ Stash Battle</h1>
+          <h1 class="pwr-title">⚔️ Stash Battle Performer</h1>
           <p class="pwr-subtitle">Compare performers head-to-head to build your rankings</p>
           
           <div class="pwr-mode-toggle">
@@ -838,7 +838,7 @@
         skipBtn.style.cursor = disableSkip ? "not-allowed" : "pointer";
       }
     } catch (error) {
-      console.error("[Stash Battle] Error loading performers:", error);
+      console.error("[Stash Battle Performer] Error loading performers:", error);
       comparisonArea.innerHTML = `
         <div class="pwr-error">
           Error loading performers: ${error.message}<br>
@@ -1066,7 +1066,7 @@
     const btn = document.createElement("button");
     btn.id = "pwr-floating-btn";
     btn.innerHTML = "⚔️";
-    btn.title = "Stash Battle";
+    btn.title = "Stash Battle Performer";
 
     btn.addEventListener("mouseenter", () => {
       btn.style.transform = "scale(1.1)";
@@ -1214,7 +1214,7 @@
   // ============================================
 
   function init() {
-    console.log("[Stash Battle] Initialized");
+    console.log("[Stash Battle Performer] Initialized");
 
     addFloatingButton();
 
