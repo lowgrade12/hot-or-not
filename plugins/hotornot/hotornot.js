@@ -1121,9 +1121,10 @@ async function fetchPerformerCount(performerFilter = {}) {
     if (performer.scenes && performer.scenes.length > 0) {
       // Filter scenes that have a valid screenshot path (limit to first 50 for performance)
       const scenesToCheck = performer.scenes.slice(0, 50);
-      const scenesWithScreenshots = scenesToCheck.filter(scene => 
-        scene.paths && scene.paths.screenshot && scene.paths.screenshot.trim() !== ''
-      );
+      const scenesWithScreenshots = scenesToCheck.filter(scene => {
+        const screenshot = scene.paths?.screenshot;
+        return screenshot && screenshot.trim() !== '';
+      });
       
       if (scenesWithScreenshots.length > 0) {
         // Pick a random scene screenshot
