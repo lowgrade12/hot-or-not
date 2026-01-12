@@ -13,7 +13,7 @@
   let gauntletFallingItem = null; // The item that's falling to find its position
   let totalItemsCount = 0; // Total items for position display
   let disableChoice = false; // Track when inputs should be disabled to prevent multiple events
-  let battleType = "performers"; // HotOrNot only works with performers // "performers" or "scenes" - determined by current page
+  let battleType = "performers"; // HotOrNot is performers-only
 
   // ============================================
   // GRAPHQL QUERIES
@@ -224,7 +224,7 @@ async function fetchSceneCount() {
         // Hit the bottom - they're the lowest, place them here
         const finalRank = scenes.length;
         const finalRating = 1; // Lowest rating
-        updateSceneRating(gauntletFallingItem.id, finalRating);
+        updateItemRating(gauntletFallingItem.id, finalRating);
         
         return {
           scenes: [gauntletFallingItem],
@@ -606,9 +606,9 @@ async function fetchSceneCount() {
     const winnerChange = newWinnerRating - winnerRating;
     const loserChange = newLoserRating - loserRating;
     
-    // Update scenes in Stash (only if changed)
-    if (winnerChange !== 0) updateSceneRating(winnerId, newWinnerRating);
-    if (loserChange !== 0) updateSceneRating(loserId, newLoserRating);
+    // Update items in Stash (only if changed)
+    if (winnerChange !== 0) updateItemRating(winnerId, newWinnerRating);
+    if (loserChange !== 0) updateItemRating(loserId, newLoserRating);
     
     return { newWinnerRating, newLoserRating, winnerChange, loserChange };
   }
