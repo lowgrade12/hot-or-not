@@ -1143,7 +1143,7 @@
         if (newGender !== selectedGender) {
           selectedGender = newGender;
           
-          // Reset gauntlet state when switching gender
+          // Reset gauntlet/champion state when switching gender
           gauntletChampion = null;
           gauntletWins = 0;
           gauntletDefeated = [];
