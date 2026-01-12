@@ -1190,7 +1190,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     const itemTypeSingular = battleType === "performers" ? "performer" : "scene";
     
     return `
-      <div id="stash-battle-container" class="hon-container">
+      <div id="hotornot-container" class="hon-container">
         <div class="hon-header">
           <h1 class="hon-title">🔥 HotOrNot</h1>
           <p class="hon-subtitle">Compare performers head-to-head to build your rankings</p>
