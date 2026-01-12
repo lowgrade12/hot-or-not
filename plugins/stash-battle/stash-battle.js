@@ -798,7 +798,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     
     // Filter out performers without images
     const performersWithImages = performers.filter(p => p.image_path);
-    totalItemsCount = result.findPerformers.count || performers.length;
+    totalItemsCount = performersWithImages.length;
     
     if (performersWithImages.length < 2) {
       return { performers: await fetchRandomPerformers(2), ranks: [null, null], isVictory: false, isFalling: false };
@@ -941,7 +941,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     
     // Filter out performers without images
     const performersWithImages = performers.filter(p => p.image_path);
-    totalItemsCount = result.findPerformers.count || performers.length;
+    totalItemsCount = performersWithImages.length;
     
     if (performersWithImages.length < 2) {
       return { performers: await fetchRandomPerformers(2), ranks: [null, null], isVictory: false };
