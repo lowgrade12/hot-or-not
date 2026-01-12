@@ -694,7 +694,7 @@ async function fetchPerformerCount(performerFilter = {}) {
   const performersWithImages = allPerformers.filter(p => p.image_path);
   
   if (performersWithImages.length < 2) {
-    throw new Error("Not enough performers with images for comparison. You need at least 2 non-male performers with images.");
+    throw new Error("Not enough performers with images for comparison. You need at least 2 performers with images.");
   }
 
   const shuffled = performersWithImages.sort(() => Math.random() - 0.5);
@@ -798,7 +798,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     
     // Filter out performers without images
     const performersWithImages = performers.filter(p => p.image_path);
-    totalItemsCount = performersWithImages.length;
+    totalItemsCount = result.findPerformers.count || performers.length;
     
     if (performersWithImages.length < 2) {
       return { performers: await fetchRandomPerformers(2), ranks: [null, null], isVictory: false, isFalling: false };
@@ -941,7 +941,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     
     // Filter out performers without images
     const performersWithImages = performers.filter(p => p.image_path);
-    totalItemsCount = performersWithImages.length;
+    totalItemsCount = result.findPerformers.count || performers.length;
     
     if (performersWithImages.length < 2) {
       return { performers: await fetchRandomPerformers(2), ranks: [null, null], isVictory: false };
