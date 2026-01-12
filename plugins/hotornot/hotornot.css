@@ -1,9 +1,9 @@
 /* ============================================
-   STASH BATTLE PLUGIN STYLES
+   HOTORNOT PLUGIN STYLES
    ============================================ */
 
 /* Container */
-.pwr-container {
+.hon-container {
   max-width: 1600px;
   margin: 0 auto;
   padding: 20px;
@@ -11,26 +11,26 @@
 }
 
 /* Header */
-.pwr-header {
+.hon-header {
   text-align: center;
   margin-bottom: 30px;
 }
 
-.pwr-title {
+.hon-title {
   font-size: 2.5rem;
   font-weight: bold;
   margin-bottom: 10px;
   color: #fff;
 }
 
-.pwr-subtitle {
+.hon-subtitle {
   font-size: 1.1rem;
   color: #888;
   margin-bottom: 20px;
 }
 
 /* Mode Toggle */
-.pwr-mode-toggle {
+.hon-mode-toggle {
   display: flex;
   justify-content: center;
   gap: 10px;
@@ -38,7 +38,7 @@
   flex-wrap: wrap;
 }
 
-.pwr-mode-btn {
+.hon-mode-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -57,40 +57,40 @@
   text-align: center;
 }
 
-.pwr-mode-btn:hover {
+.hon-mode-btn:hover {
   border-color: #666;
   color: #fff;
 }
 
-.pwr-mode-btn.active {
+.hon-mode-btn.active {
   background: #0d6efd;
   border-color: #0d6efd;
   color: #fff;
 }
 
-.pwr-mode-desc {
+.hon-mode-desc {
   font-size: 0.9rem;
   margin-top: 4px;
   opacity: 0.8;
 }
 
-.pwr-mode-icon {
+.hon-mode-icon {
   font-size: 1.3rem;
 }
 
-.pwr-mode-title {
+.hon-mode-title {
   font-size: 1rem;
 }
 
 /* Comparison Area - Fixed Height */
-.pwr-comparison-area {
-  min-height: 600px;
+.hon-comparison-area {
+  min-height: 400px;
   display: flex;
   align-items: flex-start;
   justify-content: center;
 }
 
-.pwr-vs-container {
+.hon-vs-container {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   gap: 20px;
@@ -99,7 +99,7 @@
 }
 
 /* Scene Card - Fixed Height */
-.pwr-scene-card {
+.hon-scene-card {
   background: #1a1a1a;
   border: 2px solid #333;
   border-radius: 12px;
@@ -107,63 +107,63 @@
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  min-height: 550px;
+  min-height: 350px;
 }
 
 @media (max-width: 1200px) {
-  .pwr-vs-container {
+  .hon-vs-container {
     grid-template-columns: 1fr;
     gap: 30px;
   }
 
-  .pwr-vs-divider {
+  .hon-vs-divider {
     display: flex;
     justify-content: center;
     padding: 10px 0;
   }
   
-  .pwr-scene-card {
+  .hon-scene-card {
     min-height: auto;
   }
 }
 
 /* VS Divider */
-.pwr-vs-divider {
+.hon-vs-divider {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.pwr-vs-text {
+.hon-vs-text {
   font-size: 3rem;
   font-weight: bold;
   color: #dc3545;
   text-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
 }
 
-.pwr-scene-card:hover {
+.hon-scene-card:hover {
   border-color: #0d6efd;
   transform: translateY(-5px);
   box-shadow: 0 10px 30px rgba(13, 110, 253, 0.2);
 }
 
-.pwr-scene-card.pwr-winner {
+.hon-scene-card.hon-winner {
   border-color: #28a745 !important;
   box-shadow: 0 0 30px rgba(40, 167, 69, 0.5);
 }
 
-.pwr-scene-card.pwr-loser {
+.hon-scene-card.hon-loser {
   border-color: #dc3545 !important;
   opacity: 0.7;
 }
 
 /* Ensure card has relative positioning for overlay */
-.pwr-scene-card {
+.hon-scene-card {
   position: relative;
 }
 
 /* Rating Change Animation Overlay */
-.pwr-rating-overlay {
+.hon-rating-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -179,33 +179,33 @@
   pointer-events: none;
 }
 
-.pwr-rating-overlay.pwr-rating-winner {
+.hon-rating-overlay.hon-rating-winner {
   background: rgba(40, 167, 69, 0.75);
 }
 
-.pwr-rating-overlay.pwr-rating-loser {
+.hon-rating-overlay.hon-rating-loser {
   background: rgba(220, 53, 69, 0.75);
 }
 
-.pwr-rating-display {
+.hon-rating-display {
   font-size: 3rem;
   font-weight: bold;
   color: #fff;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-.pwr-rating-change {
+.hon-rating-change {
   font-size: 1.5rem;
   font-weight: bold;
   margin-top: 8px;
   animation: bounceIn 0.4s ease-out 0.2s both;
 }
 
-.pwr-rating-winner .pwr-rating-change {
+.hon-rating-winner .hon-rating-change {
   color: #d4ffd4;
 }
 
-.pwr-rating-loser .pwr-rating-change {
+.hon-rating-loser .hon-rating-change {
   color: #ffd4d4;
 }
 
@@ -221,21 +221,21 @@
 }
 
 /* Scene Image */
-.pwr-scene-image-container {
+.hon-scene-image-container {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   cursor: pointer;
 }
 
-.pwr-scene-image {
+.hon-scene-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
   transition: opacity 0.3s ease;
 }
 
-.pwr-scene-image.pwr-no-image {
+.hon-scene-image.hon-no-image {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -245,7 +245,7 @@
 }
 
 /* Hover Preview Video */
-.pwr-hover-preview {
+.hon-hover-preview {
   position: absolute;
   top: 0;
   left: 0;
@@ -257,15 +257,15 @@
   z-index: 1;
 }
 
-.pwr-scene-card:hover .pwr-hover-preview {
+.hon-scene-card:hover .hon-hover-preview {
   opacity: 1;
 }
 
-.pwr-scene-card:hover .pwr-scene-image:not(.pwr-no-image) {
+.hon-scene-card:hover .hon-scene-image:not(.hon-no-image) {
   opacity: 0;
 }
 
-.pwr-scene-duration {
+.hon-scene-duration {
   position: absolute;
   bottom: 10px;
   right: 10px;
@@ -279,7 +279,7 @@
 }
 
 /* Streak badge for gauntlet champion */
-.pwr-streak-badge {
+.hon-streak-badge {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -294,7 +294,7 @@
 }
 
 /* Click hint overlay */
-.pwr-click-hint {
+.hon-click-hint {
   position: absolute;
   bottom: 10px;
   left: 10px;
@@ -309,12 +309,12 @@
   pointer-events: none;
 }
 
-.pwr-scene-image-container:hover .pwr-click-hint {
+.hon-scene-image-container:hover .hon-click-hint {
   opacity: 1;
 }
 
 /* Scene Info */
-.pwr-scene-body {
+.hon-scene-body {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -322,27 +322,27 @@
   transition: background 0.2s ease;
 }
 
-.pwr-scene-body:hover {
+.hon-scene-body:hover {
   background: rgba(13, 110, 253, 0.1);
 }
 
-.pwr-scene-body:hover .pwr-choose-btn {
+.hon-scene-body:hover .hon-choose-btn {
   background: #0a58ca;
 }
 
-.pwr-scene-info {
+.hon-scene-info {
   padding: 15px;
   flex: 1;
 }
 
-.pwr-scene-title {
+.hon-scene-title {
   font-size: 1.2rem;
   margin-bottom: 10px;
   line-height: 1.3;
   color: #fff;
 }
 
-.pwr-scene-title-row {
+.hon-scene-title-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -350,7 +350,7 @@
   margin-bottom: 10px;
 }
 
-.pwr-scene-title-row .pwr-scene-title {
+.hon-scene-title-row .hon-scene-title {
   margin-bottom: 0;
   flex: 1;
   overflow: hidden;
@@ -358,14 +358,14 @@
   white-space: nowrap;
 }
 
-.pwr-scene-rank {
+.hon-scene-rank {
   font-size: 1.1rem;
   font-weight: bold;
   color: #ffc107;
   white-space: nowrap;
 }
 
-.pwr-scene-meta {
+.hon-scene-meta {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -374,12 +374,12 @@
   margin-bottom: 10px;
 }
 
-.pwr-meta-item strong {
+.hon-meta-item strong {
   color: #888;
 }
 
 /* Scene Tags */
-.pwr-tags-row {
+.hon-tags-row {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -387,11 +387,11 @@
   overflow: hidden;
 }
 
-.pwr-tags-row strong {
+.hon-tags-row strong {
   margin-right: 4px;
 }
 
-.pwr-tag {
+.hon-tag {
   background: #333;
   color: #ccc;
   padding: 2px 8px;
@@ -399,13 +399,13 @@
   font-size: 0.72rem;
 }
 
-.pwr-none {
+.hon-none {
   color: #666;
   font-style: italic;
 }
 
 /* Choose Button */
-.pwr-choose-btn {
+.hon-choose-btn {
   width: 100%;
   padding: 20px;
   font-size: 1.2rem;
@@ -417,7 +417,7 @@
 }
 
 /* Actions */
-.pwr-actions {
+.hon-actions {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -425,18 +425,18 @@
   margin-top: 30px;
 }
 
-.pwr-actions .btn {
+.hon-actions .btn {
   padding: 12px 30px;
   font-size: 1rem;
 }
 
-.pwr-keyboard-hint {
+.hon-keyboard-hint {
   font-size: 0.85rem;
   color: #666;
   padding-top: 10px;
 }
 
-.pwr-keyboard-hint span {
+.hon-keyboard-hint span {
   color: #888;
   background: #2a2a2a;
   padding: 2px 8px;
@@ -445,31 +445,31 @@
 }
 
 @media (max-width: 768px) {
-  .pwr-keyboard-hint {
+  .hon-keyboard-hint {
     display: none;
   }
 }
 
 /* Loading & Error */
-.pwr-loading,
-.pwr-error {
+.hon-loading,
+.hon-error {
   text-align: center;
   padding: 60px 20px;
   font-size: 1.2rem;
   color: #888;
   width: 100%;
-  min-height: 550px;
+  min-height: 350px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.pwr-error {
+.hon-error {
   color: #dc3545;
 }
 
 /* Button overrides for Stash theme compatibility */
-.pwr-container .btn {
+.hon-container .btn {
   display: inline-block;
   font-weight: 400;
   text-align: center;
@@ -483,30 +483,30 @@
   transition: all 0.15s ease-in-out;
 }
 
-.pwr-container .btn-primary {
+.hon-container .btn-primary {
   background-color: #0d6efd;
   border-color: #0d6efd;
   color: #fff;
 }
 
-.pwr-container .btn-primary:hover {
+.hon-container .btn-primary:hover {
   background-color: #0a58ca;
   border-color: #0a58ca;
 }
 
-.pwr-container .btn-secondary {
+.hon-container .btn-secondary {
   background-color: #6c757d;
   border-color: #6c757d;
   color: #fff;
 }
 
-.pwr-container .btn-secondary:hover {
+.hon-container .btn-secondary:hover {
   background-color: #5c636a;
   border-color: #5c636a;
 }
 
 /* Modal Styles */
-#pwr-modal {
+#hon-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -518,7 +518,7 @@
   justify-content: center;
 }
 
-.pwr-modal-backdrop {
+.hon-modal-backdrop {
   position: absolute;
   top: 0;
   left: 0;
@@ -527,7 +527,7 @@
   background: rgba(0, 0, 0, 0.95);
 }
 
-.pwr-modal-content {
+.hon-modal-content {
   position: relative;
   width: 95%;
   max-width: 1500px;
@@ -539,12 +539,12 @@
 }
 
 @media (max-width: 1200px) {
-  .pwr-modal-content {
+  .hon-modal-content {
     overflow-y: auto;
   }
 }
 
-#pwr-floating-btn {
+#hon-floating-btn {
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -562,13 +562,13 @@
 }
 
 @media (max-width: 580px) {
-  #pwr-floating-btn {
+  #hon-floating-btn {
     bottom: 60px;
   }
 
 }
 
-.pwr-modal-close {
+.hon-modal-close {
   position: absolute;
   top: 15px;
   right: 20px;
@@ -581,25 +581,25 @@
   transition: color 0.2s;
 }
 
-.pwr-modal-close:hover {
+.hon-modal-close:hover {
   color: #fff;
 }
 
 /* Scrollbar styling for modal */
-.pwr-modal-content::-webkit-scrollbar {
+.hon-modal-content::-webkit-scrollbar {
   width: 8px;
 }
 
-.pwr-modal-content::-webkit-scrollbar-track {
+.hon-modal-content::-webkit-scrollbar-track {
   background: #1a1a1a;
 }
 
-.pwr-modal-content::-webkit-scrollbar-thumb {
+.hon-modal-content::-webkit-scrollbar-thumb {
   background: #444;
   border-radius: 4px;
 }
 
-.pwr-modal-content::-webkit-scrollbar-thumb:hover {
+.hon-modal-content::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
 
@@ -609,12 +609,12 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.pwr-vs-container {
+.hon-vs-container {
   animation: fadeIn 0.3s ease-out;
 }
 
 /* Victory Screen */
-.pwr-victory-screen {
+.hon-victory-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -624,7 +624,7 @@
   animation: fadeIn 0.5s ease-out;
 }
 
-.pwr-victory-crown {
+.hon-victory-crown {
   font-size: 4rem;
   animation: bounce 1s ease infinite;
 }
@@ -634,7 +634,7 @@
   50% { transform: translateY(-10px); }
 }
 
-.pwr-victory-title {
+.hon-victory-title {
   font-size: 2.5rem;
   font-weight: bold;
   color: #ffc107;
@@ -642,7 +642,7 @@
   text-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
 }
 
-.pwr-victory-scene {
+.hon-victory-scene {
   width: 100%;
   max-width: 400px;
   border-radius: 12px;
@@ -652,25 +652,124 @@
   margin: 15px 0;
 }
 
-.pwr-victory-image {
+.hon-victory-image {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 2 / 3;
   object-fit: contain;
 }
 
-.pwr-victory-name {
+.hon-victory-name {
   font-size: 1.3rem;
   color: #fff;
   margin: 8px 0;
 }
 
-.pwr-victory-stats {
+.hon-victory-stats {
   font-size: 1rem;
   color: #888;
   margin-bottom: 20px;
 }
 
-#pwr-new-gauntlet {
+#hon-new-gauntlet {
   padding: 12px 30px;
   font-size: 1.1rem;
 }
+
+
+/* ===== Performer -> Scene compatibility shim (feat/performer-mode) =====
+   Makes the new .hon-performer-* elements look like the existing
+   .hon-scene-* rules without having to duplicate the whole stylesheet.
+   This is intentionally minimal and conservative. */
+.hon-performer-card,
+.hon-performer-image-container,
+.hon-performer-image,
+.hon-performer-duration,
+.hon-performer-body,
+.hon-performer-info,
+.hon-performer-title-row,
+.hon-performer-title,
+.hon-performer-meta,
+.hon-performer-rank,
+.hon-performer-image .hon-no-image {
+  /* Base defaults so missing scene rules don't break layout */
+  box-sizing: border-box;
+}
+
+/* Useful, lightweight visual defaults if the scene stylesheet doesn't cover an element */
+.hon-performer-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--hon-card-bg, #fff);
+  box-shadow: var(--hon-card-shadow, 0 2px 8px rgba(0,0,0,0.06));
+}
+
+.hon-performer-image-container {
+  position: relative;
+  overflow: hidden;
+  background: var(--hon-image-bg, #f6f6f6);
+}
+
+.hon-performer-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.hon-performer-duration {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0,0,0,0.55);
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+.hon-performer-body {
+  padding: 12px;
+  display: block;
+}
+
+.hon-performer-title {
+  margin: 0 0 6px 0;
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--hon-title-color, #111);
+}
+
+.hon-performer-meta .hon-meta-item {
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: var(--hon-meta-color, #555);
+}
+
+.hon-performer-rank {
+  font-weight: 700;
+  color: var(--hon-rank-color, #333);
+  margin-left: 8px;
+}
+
+/* Streak & choose button */
+.hon-streak-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 8px; border-radius: 12px; font-size: 12px; }
+.hon-choose-btn { margin-top: 8px; padding: 8px 10px; background: var(--hon-btn-bg, #0d6efd); color: #fff; border-radius: 6px; text-align: center; cursor: pointer; }
+
+/* If JS already added paired hon-scene-* classes, let those rules take precedence.
+   Keeping empty grouped selectors below ensures future scene rules that use
+   multiple selectors (e.g. ".hon-scene-card .hon-scene-title") will also apply
+   when a performer class is present alongside the scene class. */
+.hon-performer-card.hon-scene-card,
+.hon-performer-image-container.hon-scene-image-container,
+.hon-performer-image.hon-scene-image,
+.hon-performer-duration.hon-scene-duration,
+.hon-performer-body.hon-scene-body,
+.hon-performer-info.hon-scene-info,
+.hon-performer-title-row.hon-scene-title-row,
+.hon-performer-title.hon-scene-title,
+.hon-performer-meta.hon-scene-meta,
+.hon-performer-rank.hon-scene-rank {}
+
+/* End shim */

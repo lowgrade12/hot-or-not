@@ -1,7 +1,7 @@
 name: Stash Battle
-description: Adds an ELO based ranking system for scenes and performers
-version: 2.0.0
-url: https://github.com/lowgrade12/stash-battle-performer.git
+description: Adds an ELO based ranking system for scenes
+version: 1.0.0
+url: https://github.com/dtt-git/stash-battle
 ui:
   javascript:
     - stash-battle.js
