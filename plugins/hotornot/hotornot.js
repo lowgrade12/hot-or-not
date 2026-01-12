@@ -667,11 +667,11 @@ async function fetchPerformerCount(performerFilter = {}) {
     return filter;
   }
 
- async function fetchRandomPerformers(count = 2) {
+  async function fetchRandomPerformers(count = 2) {
   const performerFilter = getPerformerFilter();
   const totalPerformers = await fetchPerformerCount(performerFilter);
   if (totalPerformers < 2) {
-    throw new Error("Not enough performers for comparison. You need at least 2 non-male performers.");
+    throw new Error("Not enough performers for comparison. You need at least 2 non-male performers with images.");
   }
 
   const performerQuery = `
