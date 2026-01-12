@@ -660,7 +660,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       value: "MALE",
       modifier: "EXCLUDES"
     };
-    // Exclude performers with no image (NOT missing image means HAS image)
+    // Exclude performers without images by filtering out those where image is missing
     filter.NOT = {
       is_missing: "image"
     };
