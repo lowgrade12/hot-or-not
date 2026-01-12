@@ -802,3 +802,94 @@
 .hotornot-container .performer-card {
     max-width: 45vw !important;
 }
+
+/* >>> HOTORNOT: Responsive two-up image layout overrides
+   Append these rules (or add them after the plugin CSS) to ensure both images
+   are always fully visible side-by-side without cropping. Adjust numeric
+   offsets (220px/260px/80px) below to account for header/footer height in your layout.
+*/
+
+/* Make comparison area use viewport space so image sizing can be based on vh/vw */
+.hon-comparison-area {
+  /* Reserve some vertical space for headers/controls; tweak 220px as needed */
+  height: calc(100vh - 220px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; /* hide tiny rounding overflows */
+  box-sizing: border-box;
+  padding: 8px;
+}
+
+/* Use flex for predictable two-column sizing; keep a center divider */
+.hon-vs-container {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  max-width: 1600px; /* keep an upper bound if desired */
+  box-sizing: border-box;
+}
+
+/* Ensure the divider keeps its width but doesn't force layout overflow */
+.hon-vs-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 80px; /* fixed-ish divider width; adjust if you want smaller/larger */
+}
+
+/* Scene/performer cards flex to share available space equally */
+.hon-scene-card {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* allow card to shrink if necessary */
+  box-sizing: border-box;
+}
+
+/* Make the image container freeform (remove strict aspect-ratio) so images can scale */
+.hon-scene-image-container {
+  position: relative;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px; /* optional padding for visual spacing */
+  /* do not force aspect-ratio here - the image will control scaling */
+}
+
+/* Constrain images by BOTH viewport width and height so they are never cropped.
+   Each image gets at most half the viewport width minus gaps, and at most the
+   available comparison-area height. object-fit: contain ensures no cropping. */
+.hon-scene-image,
+.hon-performer-image,
+.hon-victory-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: calc((100vw - 80px) / 2); /* 80px ~= divider + gaps/padding; adjust if you change divider */
+  max-height: calc(100vh - 260px);      /* slightly larger vertical reserve; tweak to match your header/footer */
+  object-fit: contain;
+  background: #000;
+  box-shadow: 0 2px 8px rgba(0,0,0,.6);
+}
+
+/* Small screens: stack cards vertically and limit image height to half the viewport */
+@media (max-width: 900px) {
+  .hon-vs-container { flex-direction: column; gap: 16px; }
+  .hon-vs-divider { display: flex; width: 100%; flex: 0 0 auto; }
+  .hon-scene-image, .hon-performer-image, .hon-victory-image {
+    max-width: 100%;
+    max-height: calc(50vh - 40px);
+  }
+}
+
+/* Extra: remove any default body margin that can cause scrollbars */
+html, body {
+  margin: 0;
+  height: 100%;
+}
