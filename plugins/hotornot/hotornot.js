@@ -1275,7 +1275,7 @@ async function fetchPerformerCount(performerFilter = {}) {
           return;
         }
         
-        const items = gauntletResult.scenes || gauntletResult.performers;
+        items = gauntletResult.scenes || gauntletResult.performers;
         ranks = gauntletResult.ranks;
       } else if (currentMode === "champion") {
         const championResult = await fetchChampionPair();
