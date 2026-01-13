@@ -70,6 +70,26 @@
     gender
   `;
 
+  const IMAGE_FRAGMENT = `
+    id
+    title
+    rating100
+    date
+    paths {
+      thumbnail
+      image
+    }
+    studio {
+      name
+    }
+    performers {
+      name
+    }
+    tags {
+      name
+    }
+  `;
+
 async function fetchSceneCount() {
     const countQuery = `
       query FindScenesCount {
@@ -405,13 +425,17 @@ async function fetchSceneCount() {
   }
   
   function createVictoryScreen(champion) {
-    // Handle both scenes and performers
+    // Handle scenes, performers, and images
     let title, imagePath;
     
     if (battleType === "performers") {
       // Performer
       title = champion.name || `Performer #${champion.id}`;
       imagePath = champion.image_path;
+    } else if (battleType === "images") {
+      // Image
+      title = champion.title || `Image #${champion.id}`;
+      imagePath = champion.paths && champion.paths.thumbnail ? champion.paths.thumbnail : null;
     } else {
       // Scene
       const file = champion.files && champion.files[0] ? champion.files[0] : {};
@@ -426,7 +450,7 @@ async function fetchSceneCount() {
       imagePath = champion.paths ? champion.paths.screenshot : null;
     }
     
-    const itemType = battleType === "performers" ? "performers" : "scenes";
+    const itemType = battleType === "performers" ? "performers" : (battleType === "images" ? "images" : "scenes");
     
     return `
       <div class="hon-victory-screen">
@@ -449,13 +473,17 @@ async function fetchSceneCount() {
     const comparisonArea = document.getElementById("hon-comparison-area");
     if (!comparisonArea) return;
     
-    // Handle both scenes and performers
+    // Handle scenes, performers, and images
     let title, imagePath;
     
     if (battleType === "performers") {
       // Performer
       title = item.name || `Performer #${item.id}`;
       imagePath = item.image_path;
+    } else if (battleType === "images") {
+      // Image
+      title = item.title || `Image #${item.id}`;
+      imagePath = item.paths && item.paths.thumbnail ? item.paths.thumbnail : null;
     } else {
       // Scene
       const file = item.files && item.files[0] ? item.files[0] : {};
@@ -997,12 +1025,374 @@ async function fetchPerformerCount(performerFilter = {}) {
   }
 
   // ============================================
+  // IMAGE FUNCTIONS
+  // ============================================
+
+  async function fetchImageCount() {
+    const countQuery = `
+      query FindImages {
+        findImages(filter: { per_page: 0 }) {
+          count
+        }
+      }
+    `;
+    const countResult = await graphqlQuery(countQuery);
+    return countResult.findImages.count;
+  }
+
+  async function fetchRandomImages(count = 2) {
+    const totalImages = await fetchImageCount();
+    if (totalImages < 2) {
+      throw new Error("Not enough images for comparison. You need at least 2 images.");
+    }
+
+    const imagesQuery = `
+      query FindRandomImages($filter: FindFilterType) {
+        findImages(filter: $filter) {
+          images {
+            ${IMAGE_FRAGMENT}
+          }
+        }
+      }
+    `;
+
+    const result = await graphqlQuery(imagesQuery, {
+      filter: {
+        per_page: Math.min(100, totalImages),
+        sort: "random"
+      }
+    });
+
+    const allImages = result.findImages.images || [];
+    
+    if (allImages.length < 2) {
+      throw new Error("Not enough images returned from query.");
+    }
+
+    const shuffled = allImages.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 2);
+  }
+
+  // Swiss mode: fetch two images with similar ratings
+  async function fetchSwissPairImages() {
+    const imagesQuery = `
+      query FindImagesByRating($filter: FindFilterType) {
+        findImages(filter: $filter) {
+          images {
+            ${IMAGE_FRAGMENT}
+          }
+        }
+      }
+    `;
+
+    // Get images sorted by rating
+    const result = await graphqlQuery(imagesQuery, {
+      filter: {
+        per_page: -1, // Get all for accurate ranking
+        sort: "rating",
+        direction: "DESC"
+      }
+    });
+
+    const images = result.findImages.images || [];
+    
+    if (images.length < 2) {
+      // Fallback to random if not enough rated images
+      return { images: await fetchRandomImages(2), ranks: [null, null] };
+    }
+
+    // Pick a random image, then find one with similar rating
+    const randomIndex = Math.floor(Math.random() * images.length);
+    const image1 = images[randomIndex];
+    const rating1 = image1.rating100 || 50;
+
+    // Find images within ±15 rating points
+    const similarImages = images.filter(s => {
+      if (s.id === image1.id) return false;
+      const rating = s.rating100 || 50;
+      return Math.abs(rating - rating1) <= 15;
+    });
+
+    let image2;
+    let image2Index;
+    if (similarImages.length > 0) {
+      // Pick random from similar-rated images
+      image2 = similarImages[Math.floor(Math.random() * similarImages.length)];
+      image2Index = images.findIndex(s => s.id === image2.id);
+    } else {
+      // No similar images, pick closest
+      const otherImages = images.filter(s => s.id !== image1.id);
+      otherImages.sort((a, b) => {
+        const diffA = Math.abs((a.rating100 || 50) - rating1);
+        const diffB = Math.abs((b.rating100 || 50) - rating1);
+        return diffA - diffB;
+      });
+      image2 = otherImages[0];
+      image2Index = images.findIndex(s => s.id === image2.id);
+    }
+
+    return { 
+      images: [image1, image2], 
+      ranks: [randomIndex + 1, image2Index + 1] 
+    };
+  }
+
+  // Gauntlet mode: champion vs next challenger
+  async function fetchGauntletPairImages() {
+    const imagesQuery = `
+      query FindImagesByRating($filter: FindFilterType) {
+        findImages(filter: $filter) {
+          count
+          images {
+            ${IMAGE_FRAGMENT}
+          }
+        }
+      }
+    `;
+
+    // Get ALL images sorted by rating descending (highest first)
+    const result = await graphqlQuery(imagesQuery, {
+      filter: {
+        per_page: -1, // Get all
+        sort: "rating",
+        direction: "DESC"
+      }
+    });
+
+    const images = result.findImages.images || [];
+    totalItemsCount = images.length;
+    
+    if (images.length < 2) {
+      return { images: await fetchRandomImages(2), ranks: [null, null], isVictory: false, isFalling: false };
+    }
+
+    // Handle falling mode - find next opponent BELOW to test against
+    if (gauntletFalling && gauntletFallingItem) {
+      const fallingIndex = images.findIndex(s => s.id === gauntletFallingItem.id);
+      
+      // Find opponents below (higher index) that haven't been tested
+      const belowOpponents = images.filter((s, idx) => {
+        if (s.id === gauntletFallingItem.id) return false;
+        if (gauntletDefeated.includes(s.id)) return false;
+        return idx > fallingIndex; // Below in ranking
+      });
+      
+      if (belowOpponents.length === 0) {
+        // Hit the bottom - they're the lowest, place them here
+        const finalRank = images.length;
+        const finalRating = 1; // Lowest rating
+        updateImageRating(gauntletFallingItem.id, finalRating);
+        
+        return {
+          images: [gauntletFallingItem],
+          ranks: [finalRank],
+          isVictory: false,
+          isFalling: true,
+          isPlacement: true,
+          placementRank: finalRank,
+          placementRating: finalRating
+        };
+      } else {
+        // Get next opponent below (first one, closest to falling image)
+        const nextBelow = belowOpponents[0];
+        const nextBelowIndex = images.findIndex(s => s.id === nextBelow.id);
+        
+        // Update the falling image's rank for display
+        gauntletChampionRank = fallingIndex + 1;
+        
+        return {
+          images: [gauntletFallingItem, nextBelow],
+          ranks: [fallingIndex + 1, nextBelowIndex + 1],
+          isVictory: false,
+          isFalling: true
+        };
+      }
+    }
+
+    // If no champion yet, start with a random challenger vs the lowest rated image
+    if (!gauntletChampion) {
+      // Reset state
+      gauntletDefeated = [];
+      gauntletFalling = false;
+      gauntletFallingItem = null;
+      
+      // Pick random image as challenger
+      const randomIndex = Math.floor(Math.random() * images.length);
+      const challenger = images[randomIndex];
+      
+      // Start at the bottom - find lowest rated image that isn't the challenger
+      const lowestRated = images
+        .filter(s => s.id !== challenger.id)
+        .sort((a, b) => (a.rating100 || 0) - (b.rating100 || 0))[0];
+      
+      const lowestIndex = images.findIndex(s => s.id === lowestRated.id);
+      
+      // Challenger's current rank
+      gauntletChampionRank = randomIndex + 1;
+      
+      return { 
+        images: [challenger, lowestRated], 
+        ranks: [randomIndex + 1, lowestIndex + 1],
+        isVictory: false,
+        isFalling: false
+      };
+    }
+
+    // Champion exists - find next opponent they haven't defeated yet
+    const championIndex = images.findIndex(s => s.id === gauntletChampion.id);
+    
+    // Update champion rank (1-indexed, so +1)
+    gauntletChampionRank = championIndex + 1;
+    
+    // Find opponents above champion that haven't been defeated
+    const remainingOpponents = images.filter((s, idx) => {
+      if (s.id === gauntletChampion.id) return false;
+      if (gauntletDefeated.includes(s.id)) return false;
+      // Only images ranked higher (lower index) or same rating
+      return idx < championIndex || (s.rating100 || 0) >= (gauntletChampion.rating100 || 0);
+    });
+    
+    // If no opponents left, champion has truly won
+    if (remainingOpponents.length === 0) {
+      gauntletChampionRank = 1;
+      return { 
+        images: [gauntletChampion], 
+        ranks: [1],
+        isVictory: true,
+        isFalling: false
+      };
+    }
+    
+    // Pick the next highest-ranked remaining opponent
+    const nextOpponent = remainingOpponents[remainingOpponents.length - 1]; // Closest to champion
+    const nextOpponentIndex = images.findIndex(s => s.id === nextOpponent.id);
+    
+    return { 
+      images: [gauntletChampion, nextOpponent], 
+      ranks: [championIndex + 1, nextOpponentIndex + 1],
+      isVictory: false,
+      isFalling: false
+    };
+  }
+
+  // Champion mode: like gauntlet but winner stays on (no falling)
+  async function fetchChampionPairImages() {
+    const imagesQuery = `
+      query FindImagesByRating($filter: FindFilterType) {
+        findImages(filter: $filter) {
+          count
+          images {
+            ${IMAGE_FRAGMENT}
+          }
+        }
+      }
+    `;
+
+    // Get ALL images sorted by rating descending (highest first)
+    const result = await graphqlQuery(imagesQuery, {
+      filter: {
+        per_page: -1,
+        sort: "rating",
+        direction: "DESC"
+      }
+    });
+
+    const images = result.findImages.images || [];
+    totalItemsCount = images.length;
+    
+    if (images.length < 2) {
+      return { images: await fetchRandomImages(2), ranks: [null, null], isVictory: false };
+    }
+
+    // If no champion yet, start with a random challenger vs the lowest rated image
+    if (!gauntletChampion) {
+      gauntletDefeated = [];
+      
+      // Pick random image as challenger
+      const randomIndex = Math.floor(Math.random() * images.length);
+      const challenger = images[randomIndex];
+      
+      // Start at the bottom - find lowest rated image that isn't the challenger
+      const lowestRated = images
+        .filter(s => s.id !== challenger.id)
+        .sort((a, b) => (a.rating100 || 0) - (b.rating100 || 0))[0];
+      
+      const lowestIndex = images.findIndex(s => s.id === lowestRated.id);
+      
+      gauntletChampionRank = randomIndex + 1;
+      
+      return { 
+        images: [challenger, lowestRated], 
+        ranks: [randomIndex + 1, lowestIndex + 1],
+        isVictory: false
+      };
+    }
+
+    // Champion exists - find next opponent they haven't defeated yet
+    const championIndex = images.findIndex(s => s.id === gauntletChampion.id);
+    
+    gauntletChampionRank = championIndex + 1;
+    
+    // Find opponents above champion that haven't been defeated
+    const remainingOpponents = images.filter((s, idx) => {
+      if (s.id === gauntletChampion.id) return false;
+      if (gauntletDefeated.includes(s.id)) return false;
+      return idx < championIndex || (s.rating100 || 0) >= (gauntletChampion.rating100 || 0);
+    });
+    
+    // If no opponents left, champion has won!
+    if (remainingOpponents.length === 0) {
+      gauntletChampionRank = 1;
+      return { 
+        images: [gauntletChampion], 
+        ranks: [1],
+        isVictory: true
+      };
+    }
+    
+    // Pick the next highest-ranked remaining opponent
+    const nextOpponent = remainingOpponents[remainingOpponents.length - 1];
+    const nextOpponentIndex = images.findIndex(s => s.id === nextOpponent.id);
+    
+    return { 
+      images: [gauntletChampion, nextOpponent], 
+      ranks: [championIndex + 1, nextOpponentIndex + 1],
+      isVictory: false
+    };
+  }
+
+  async function updateImageRating(imageId, newRating) {
+    const mutation = `
+      mutation ImageUpdate($input: ImageUpdateInput!) {
+        imageUpdate(input: $input) {
+          id
+          rating100
+        }
+      }
+    `;
+    
+    try {
+      await graphqlQuery(mutation, {
+        input: {
+          id: imageId,
+          rating100: Math.max(1, Math.min(100, Math.round(newRating)))
+        }
+      });
+      console.log(`[HotOrNot] Updated image ${imageId} rating to ${newRating}`);
+    } catch (e) {
+      console.error(`[HotOrNot] Failed to update image ${imageId} rating:`, e);
+    }
+  }
+
+  // ============================================
   // WRAPPER FUNCTIONS (Dispatch based on battleType)
   // ============================================
 
   async function fetchSwissPair() {
     if (battleType === "performers") {
       return await fetchSwissPairPerformers();
+    } else if (battleType === "images") {
+      return await fetchSwissPairImages();
     } else {
       return await fetchSwissPairScenes();
     }
@@ -1011,6 +1401,8 @@ async function fetchPerformerCount(performerFilter = {}) {
   async function fetchGauntletPair() {
     if (battleType === "performers") {
       return await fetchGauntletPairPerformers();
+    } else if (battleType === "images") {
+      return await fetchGauntletPairImages();
     } else {
       return await fetchGauntletPairScenes();
     }
@@ -1019,6 +1411,8 @@ async function fetchPerformerCount(performerFilter = {}) {
   async function fetchChampionPair() {
     if (battleType === "performers") {
       return await fetchChampionPairPerformers();
+    } else if (battleType === "images") {
+      return await fetchChampionPairImages();
     } else {
       return await fetchChampionPairScenes();
     }
@@ -1027,6 +1421,8 @@ async function fetchPerformerCount(performerFilter = {}) {
   async function updateItemRating(itemId, newRating) {
     if (battleType === "performers") {
       return await updatePerformerRating(itemId, newRating);
+    } else if (battleType === "images") {
+      return await updateImageRating(itemId, newRating);
     } else {
       return await updateSceneRating(itemId, newRating);
     }
@@ -1176,16 +1572,83 @@ async function fetchPerformerCount(performerFilter = {}) {
     `;
   }
 
+  function createImageCard(image, side, rank = null, streak = null) {
+    // Image title
+    const title = image.title || `Image #${image.id}`;
+    
+    // Image paths
+    const imagePath = image.paths && image.paths.image ? image.paths.image : null;
+    const thumbnailPath = image.paths && image.paths.thumbnail ? image.paths.thumbnail : null;
+    
+    // Image metadata
+    const performers = image.performers && image.performers.length > 0 
+      ? image.performers.map((p) => p.name).join(", ") 
+      : "No performers";
+    const studio = image.studio ? image.studio.name : "No studio";
+    const tags = image.tags ? image.tags.slice(0, 5).map((t) => t.name) : [];
+    const stashRating = image.rating100 ? `${image.rating100}/100` : "Unrated";
+    
+    // Handle numeric ranks and string ranks
+    let rankDisplay = '';
+    if (rank !== null && rank !== undefined) {
+      if (typeof rank === 'number') {
+        rankDisplay = `<span class="hon-image-rank hon-scene-rank">#${rank}</span>`;
+      } else {
+        rankDisplay = `<span class="hon-image-rank hon-scene-rank">${rank}</span>`;
+      }
+    }
+    
+    // Streak badge for gauntlet champion
+    let streakDisplay = '';
+    if (streak !== null && streak > 0) {
+      streakDisplay = `<div class="hon-streak-badge">🔥 ${streak} win${streak > 1 ? 's' : ''}</div>`;
+    }
+
+    return `
+      <div class="hon-image-card hon-scene-card" data-image-id="${image.id}" data-side="${side}" data-rating="${image.rating100 || 50}">
+        <div class="hon-image-image-container hon-scene-image-container" data-image-url="/images/${image.id}">
+          ${thumbnailPath 
+            ? `<img class="hon-image-image hon-scene-image" src="${thumbnailPath}" alt="${title}" loading="lazy" />`
+            : `<div class="hon-image-image hon-scene-image hon-no-image">No Image</div>`
+          }
+          ${streakDisplay}
+          <div class="hon-click-hint">Click to open image</div>
+        </div>
+        
+        <div class="hon-image-body hon-scene-body" data-winner="${image.id}">
+          <div class="hon-image-info hon-scene-info">
+            <div class="hon-image-title-row hon-scene-title-row">
+              <h3 class="hon-image-title hon-scene-title">${title}</h3>
+              ${rankDisplay}
+            </div>
+            
+            <div class="hon-image-meta hon-scene-meta">
+              <div class="hon-meta-item"><strong>Studio:</strong> ${studio}</div>
+              <div class="hon-meta-item"><strong>Performers:</strong> ${performers}</div>
+              ${image.date ? `<div class="hon-meta-item"><strong>Date:</strong> ${image.date}</div>` : ''}
+              <div class="hon-meta-item"><strong>Rating:</strong> ${stashRating}</div>
+              ${tags.length > 0 ? `<div class="hon-meta-item hon-tags-row"><strong>Tags:</strong> ${tags.map((tag) => `<span class="hon-tag">${tag}</span>`).join("")}</div>` : ''}
+            </div>
+          </div>
+          
+          <div class="hon-choose-btn">
+            ✓ Choose This Image
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
 
   function createMainUI() {
-    const itemType = battleType === "performers" ? "performers" : "scenes";
-    const itemTypeSingular = battleType === "performers" ? "performer" : "scene";
+    const itemType = battleType === "performers" ? "performers" : (battleType === "images" ? "images" : "scenes");
+    const itemTypeSingular = battleType === "performers" ? "performer" : (battleType === "images" ? "image" : "scene");
     
     return `
       <div id="hotornot-container" class="hon-container">
         <div class="hon-header">
           <h1 class="hon-title">🔥 HotOrNot</h1>
-          <p class="hon-subtitle">Compare performers head-to-head to build your rankings</p>
+          <p class="hon-subtitle">Compare ${itemType} head-to-head to build your rankings</p>
           
           <div class="hon-mode-toggle">
             <button class="hon-mode-btn ${currentMode === 'swiss' ? 'active' : ''}" data-mode="swiss">
@@ -1246,7 +1709,7 @@ async function fetchPerformerCount(performerFilter = {}) {
         
         // Check for victory (champion reached #1)
         if (gauntletResult.isVictory) {
-          comparisonArea.innerHTML = createVictoryScreen((gauntletResult.scenes || gauntletResult.performers)[0]);
+          comparisonArea.innerHTML = createVictoryScreen((gauntletResult.scenes || gauntletResult.performers || gauntletResult.images)[0]);
           
           // Hide the status banner and skip button
           const statusEl = document.getElementById("hon-gauntlet-status");
@@ -1275,18 +1738,18 @@ async function fetchPerformerCount(performerFilter = {}) {
         
         // Check for placement (falling scene hit bottom)
         if (gauntletResult.isPlacement) {
-          showPlacementScreen((gauntletResult.scenes || gauntletResult.performers)[0], gauntletResult.placementRank, gauntletResult.placementRating);
+          showPlacementScreen((gauntletResult.scenes || gauntletResult.performers || gauntletResult.images)[0], gauntletResult.placementRank, gauntletResult.placementRating);
           return;
         }
         
-        items = gauntletResult.scenes || gauntletResult.performers;
+        items = gauntletResult.scenes || gauntletResult.performers || gauntletResult.images;
         ranks = gauntletResult.ranks;
       } else if (currentMode === "champion") {
         const championResult = await fetchChampionPair();
         
         // Check for victory (champion beat everyone)
         if (championResult.isVictory) {
-          comparisonArea.innerHTML = createVictoryScreen((championResult.scenes || championResult.performers)[0]);
+          comparisonArea.innerHTML = createVictoryScreen((championResult.scenes || championResult.performers || championResult.images)[0]);
           
           // Hide the skip button
           const actionsEl = document.querySelector(".hon-actions");
@@ -1308,17 +1771,18 @@ async function fetchPerformerCount(performerFilter = {}) {
           return;
         }
         
-        items = championResult.scenes || championResult.performers;
+        items = championResult.scenes || championResult.performers || championResult.images;
         ranks = championResult.ranks;
       } else {
         const swissResult = await fetchSwissPair();
-        items = swissResult.scenes || swissResult.performers;
+        items = swissResult.scenes || swissResult.performers || swissResult.images;
         ranks = swissResult.ranks;
       }
       
       if (items.length < 2) {
+        const itemType = battleType === "performers" ? "performers" : (battleType === "images" ? "images" : "scenes");
         comparisonArea.innerHTML =
-          '<div class="hon-error">Not enough scenes available for comparison.</div>';
+          `<div class="hon-error">Not enough ${itemType} available for comparison.</div>`;
         return;
       }
 
@@ -1340,11 +1804,11 @@ async function fetchPerformerCount(performerFilter = {}) {
 
       comparisonArea.innerHTML = `
         <div class="hon-vs-container">
-          ${(battleType === "performers" ? createPerformerCard : createSceneCard)(items[0], "left", ranks[0], leftStreak)}
+          ${(battleType === "performers" ? createPerformerCard : (battleType === "images" ? createImageCard : createSceneCard))(items[0], "left", ranks[0], leftStreak)}
           <div class="hon-vs-divider">
             <span class="hon-vs-text">VS</span>
           </div>
-          ${(battleType === "performers" ? createPerformerCard : createSceneCard)(items[1], "right", ranks[1], rightStreak)}
+          ${(battleType === "performers" ? createPerformerCard : (battleType === "images" ? createImageCard : createSceneCard))(items[1], "right", ranks[1], rightStreak)}
         </div>
       `;
 
@@ -1355,7 +1819,7 @@ async function fetchPerformerCount(performerFilter = {}) {
 
       // Attach click-to-open (for thumbnail only)
       comparisonArea.querySelectorAll(".hon-scene-image-container").forEach((container) => {
-        const itemUrl = container.dataset.sceneUrl || container.dataset.performerUrl;
+        const itemUrl = container.dataset.sceneUrl || container.dataset.performerUrl || container.dataset.imageUrl;
         
         container.addEventListener("click", () => {
           if (itemUrl) {
@@ -1410,7 +1874,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     const loserId = winnerId === currentPair.left.id ? currentPair.right.id : currentPair.left.id;
     
     const winnerRating = parseInt(winnerCard.dataset.rating) || 50;
-    const loserCard = document.querySelector(`.hon-scene-card[data-scene-id="${loserId}"], .hon-scene-card[data-performer-id="${loserId}"]`);
+    const loserCard = document.querySelector(`.hon-scene-card[data-scene-id="${loserId}"], .hon-scene-card[data-performer-id="${loserId}"], .hon-scene-card[data-image-id="${loserId}"]`);
     const loserRating = parseInt(loserCard?.dataset.rating) || 50;
     
     // Get the loser's rank for #1 dethrone logic
@@ -1600,8 +2064,8 @@ async function fetchPerformerCount(performerFilter = {}) {
 
   function shouldShowButton() {
     const path = window.location.pathname;
-    // Show only on /performers pages (HotOrNot is for performers only)
-    return (path === '/performers' || path === '/performers/');
+    // Show on /performers or /images pages
+    return (path === '/performers' || path === '/performers/' || path === '/images' || path === '/images/');
   }
 
 function addFloatingButton() {
@@ -1637,8 +2101,13 @@ function addFloatingButton() {
   }
 
   function openRankingModal() {
-    // HotOrNot is always for performers
-    battleType = "performers";
+    // Detect if we're on performers or images page
+    const path = window.location.pathname;
+    if (path === '/images' || path === '/images/') {
+      battleType = "images";
+    } else {
+      battleType = "performers";
+    }
     
     const existingModal = document.getElementById("hon-modal");
     if (existingModal) existingModal.remove();
@@ -1772,16 +2241,10 @@ function addFloatingButton() {
   function init() {
     console.log("[HotOrNot] Initialized");
     
-    // HotOrNot is only for performers
-    battleType = "performers";
-
     addFloatingButton();
 
     // Watch for SPA navigation
     const observer = new MutationObserver(() => {
-      // HotOrNot stays on performers only
-      battleType = "performers";
-      
       addFloatingButton();
     });
 

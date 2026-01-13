@@ -1,5 +1,5 @@
 name: HotOrNot
-description: Adds an ELO based ranking system for performers
+description: Adds an ELO based ranking system for performers and images
 version: 1.0.0
 url: https://github.com/lowgrade12/stash-battle-performer.git
 ui:
