@@ -18,7 +18,7 @@ The plugin presents you with two performers or images side-by-side and asks you 
 
 ## Available Versions
 
-This repository contains two plugin versions:
+This repository contains two plugin versions. See [PLUGIN_VERSIONS.md](PLUGIN_VERSIONS.md) for a detailed comparison.
 
 ### 1. **HotOrNot** (Basic Version)
 - **Location**: `/plugins/hotornot/`
@@ -35,7 +35,7 @@ This repository contains two plugin versions:
   - Toggle image requirements
 - **Documentation**: See [FILTERING_GUIDE.md](FILTERING_GUIDE.md) for complete details
 
-Both versions can be installed, but **only install one at a time** to avoid conflicts.
+⚠️ **Important**: Both versions can be installed, but **only install one at a time** to avoid conflicts.
 
 ## Installation
 
