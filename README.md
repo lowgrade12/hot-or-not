@@ -16,6 +16,27 @@ A head-to-head comparison plugin that helps you rank performers and images.
 
 The plugin presents you with two performers or images side-by-side and asks you to pick the better one. Based on your choices, ratings are automatically updated using an ELO algorithm. Over time, this builds an accurate ranking of your entire library based on your personal preferences.
 
+## Available Versions
+
+This repository contains two plugin versions. See [PLUGIN_VERSIONS.md](PLUGIN_VERSIONS.md) for a detailed comparison.
+
+### 1. **HotOrNot** (Basic Version)
+- **Location**: `/plugins/hotornot/`
+- **Best for**: Simple, straightforward performer/image comparisons
+- **Features**: Core ELO ranking with three comparison modes
+
+### 2. **HotOrNot with Filtering** (Advanced Version) 🆕
+- **Location**: `/plugins/hotornot-filtering/`
+- **Best for**: Users who want to customize their comparison pool
+- **Features**: Everything in the basic version PLUS advanced filtering options
+  - Filter by gender, ethnicity, country
+  - Filter by age range and rating range
+  - Search by performer name
+  - Toggle image requirements
+- **Documentation**: See [FILTERING_GUIDE.md](FILTERING_GUIDE.md) for complete details
+
+⚠️ **Important**: Both versions can be installed, but **only install one at a time** to avoid conflicts.
+
 ## Installation
 
 ⚠️ Install at your own risk, nearly entirely vibe coded for myself using Claude, I have barely reviewed the code at all.
@@ -23,7 +44,12 @@ The plugin presents you with two performers or images side-by-side and asks you 
 Recommend saving a backup of your database beforehand (Settings → Interface → Editing)
 
 ### Manual Download: 
+
+**For Basic Version:**
 1. Download the `/plugins/hotornot/` folder to your Stash plugins directory
+
+**For Advanced Version with Filtering:**
+1. Download the `/plugins/hotornot-filtering/` folder to your Stash plugins directory
 
 ## Usage
 

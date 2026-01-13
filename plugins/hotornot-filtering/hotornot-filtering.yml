@@ -1,0 +1,9 @@
+name: HotOrNot (with Filtering)
+description: Adds an ELO based ranking system for performers and images with advanced filtering options
+version: 1.1.0
+url: https://github.com/lowgrade12/hot-or-not.git
+ui:
+  javascript:
+    - hotornot-filtering.js
+  css:
+    - hotornot-filtering.css
