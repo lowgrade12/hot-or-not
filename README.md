@@ -11,6 +11,7 @@ A head-to-head comparison plugin that helps you rank performers and images.
   - **Swiss** ⚖️ – Fair matchups between similarly-rated items. Both ratings adjust based on the outcome.
   - **Gauntlet** 🎯 – Place a random item in your rankings. They climb from the bottom, challenging each item above them until they lose, then settle into their final position.
   - **Champion** 🏆 – Winner stays on. The winning item keeps battling until they're dethroned.
+- **Advanced Performer Filtering** ⚙️ – Filter performers by gender, ethnicity, country, age, rating, name, and more!
 
 ## Overview
 
@@ -32,7 +33,8 @@ Optional Step: Change Rating System Type to "Decimal" (Settings → Interface �
 ### For Performers:
 1. Navigate to the **Performers** page in Stash
 2. Click the floating 🔥 button in the bottom-right corner
-3. Choose your preferred comparison mode
+3. **(Optional)** Click the filter panel to customize which performers appear in comparisons
+4. Choose your preferred comparison mode
 4. Click on a performer (or use arrow keys) to pick the winner
 5. Watch your rankings evolve over time!
 
@@ -42,6 +44,63 @@ Optional Step: Change Rating System Type to "Decimal" (Settings → Interface �
 3. Choose your preferred comparison mode
 4. Click on an image (or use arrow keys) to pick the winner
 5. Watch your rankings evolve over time!
+
+## Advanced Performer Filtering
+
+When comparing performers, you can use the built-in filter panel to narrow down which performers appear in your comparisons. This is perfect for creating focused rankings or comparing specific groups.
+
+### Available Filters:
+
+#### 🎭 Gender
+Select which genders to include in comparisons:
+- Female
+- Trans Female
+- Non-Binary
+- Male
+- Trans Male
+- Intersex
+
+**Default:** Only Female performers (for backward compatibility)
+
+#### 🌍 Ethnicity
+Filter by ethnicity using text search (e.g., "Asian", "Caucasian", "Latina", "Ebony")
+- Leave empty to include all ethnicities
+- Searches within performer ethnicity field
+
+#### 🗺️ Country
+Filter by country using text search (e.g., "USA", "Japan", "Brazil", "Czech Republic")
+- Leave empty to include all countries
+- Searches within performer country field
+
+#### 🎂 Age Range
+Set minimum and/or maximum age for performers
+- Range: 18-100 years
+- Based on performer birthdate
+- Leave empty for no age restriction
+
+#### ⭐ Rating Range
+Filter by existing rating (1-100 scale)
+- Useful for comparing only highly-rated or unrated performers
+- Leave empty to include all ratings
+
+#### 🔍 Name Search
+Search for specific performers by name
+- Useful for finding and comparing particular performers
+- Partial name matching supported
+
+#### 🖼️ Image Requirement
+Toggle whether performers must have profile images
+- **Checked (default):** Only show performers with images
+- **Unchecked:** Include all performers regardless of image
+
+### Using Filters:
+
+1. Click the **⚙️ Filter Performers** panel to expand it
+2. Adjust any filters you want to apply
+3. Click **Apply Filters** to load new comparisons with your filter settings
+4. Click **Reset** to return to default settings (Female only, must have image)
+
+**Note:** Changing filters will reset any active Gauntlet or Champion run.
 
 ## How It Works
 
