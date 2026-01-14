@@ -1563,8 +1563,8 @@ async function fetchPerformerCount(performerFilter = {}) {
     if (battleType === "performers") {
       return await fetchGauntletPairPerformers();
     } else if (battleType === "images") {
-      // Images use Swiss mode only - redirect to Swiss if somehow called
-      console.warn("[HotOrNot] Gauntlet mode not supported for images, using Swiss mode");
+      // Images use Swiss mode only - this should never be called
+      console.error("[HotOrNot] ERROR: Gauntlet mode called for images (not supported). Using Swiss mode as fallback.");
       return await fetchSwissPairImages();
     } else {
       return await fetchGauntletPairScenes();
@@ -1575,8 +1575,8 @@ async function fetchPerformerCount(performerFilter = {}) {
     if (battleType === "performers") {
       return await fetchChampionPairPerformers();
     } else if (battleType === "images") {
-      // Images use Swiss mode only - redirect to Swiss if somehow called
-      console.warn("[HotOrNot] Champion mode not supported for images, using Swiss mode");
+      // Images use Swiss mode only - this should never be called
+      console.error("[HotOrNot] ERROR: Champion mode called for images (not supported). Using Swiss mode as fallback.");
       return await fetchSwissPairImages();
     } else {
       return await fetchChampionPairScenes();
@@ -1919,10 +1919,11 @@ async function fetchPerformerCount(performerFilter = {}) {
   }
 
   // ============================================
-  // IMAGE SELECTION FOR GAUNTLET
+  // IMAGE SELECTION (REMOVED)
   // ============================================
-  // NOTE: Image selection has been removed. Images now use Swiss mode exclusively.
-  // The gauntlet/champion modes are only available for performers.
+  // NOTE: Image selection for gauntlet mode has been removed.
+  // Images now use Swiss mode exclusively for optimal performance.
+  // Gauntlet and Champion modes are only available for performers.
 
   function createMainUI() {
     const itemType = battleType === "performers" ? "performers" : (battleType === "images" ? "images" : "scenes");
