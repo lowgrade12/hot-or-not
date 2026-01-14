@@ -1739,8 +1739,8 @@ async function fetchPerformerCount(performerFilter = {}) {
       
       // Update the title based on the current mode
       const titleEl = document.getElementById("hon-selection-title");
-      const itemTypeSingular = battleType === "performers" ? "performer" : (battleType === "images" ? "image" : "scene");
       if (titleEl) {
+        const itemTypeSingular = battleType === "performers" ? "performer" : (battleType === "images" ? "image" : "scene");
         if (currentMode === "gauntlet") {
           titleEl.textContent = `Select a ${itemTypeSingular} to run the gauntlet:`;
         } else if (currentMode === "champion") {
