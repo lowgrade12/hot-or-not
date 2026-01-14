@@ -318,10 +318,8 @@ async function fetchSceneCount() {
       };
     }
     
-    // Pick the next highest-ranked remaining opponent
-    // Add randomization: select from opponents at similar rank (within 3 positions)
-    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
-    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
+    // Pick the next highest-ranked remaining opponent with randomization
+    const nextOpponent = selectRandomOpponent(remainingOpponents);
     const nextOpponentIndex = scenes.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -407,10 +405,8 @@ async function fetchSceneCount() {
       };
     }
     
-    // Pick the next highest-ranked remaining opponent
-    // Add randomization: select from opponents at similar rank (within 3 positions)
-    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
-    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
+    // Pick the next highest-ranked remaining opponent with randomization
+    const nextOpponent = selectRandomOpponent(remainingOpponents);
     const nextOpponentIndex = scenes.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -602,6 +598,18 @@ async function fetchSceneCount() {
   // ============================================
   // RATING LOGIC
   // ============================================
+
+  /**
+   * Select a random opponent from the closest remaining opponents
+   * @param {Array} remainingOpponents - Array of remaining opponents sorted by rank
+   * @param {number} maxChoices - Maximum number of closest opponents to consider (default: 3)
+   * @returns {Object} Randomly selected opponent from the closest options
+   */
+  function selectRandomOpponent(remainingOpponents, maxChoices = 3) {
+    // Get up to maxChoices closest opponents (or all remaining if fewer)
+    const closestOpponents = remainingOpponents.slice(-maxChoices);
+    return closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
+  }
 
   /**
    * Parse ELO match data from performer custom_fields
@@ -1139,10 +1147,8 @@ async function fetchPerformerCount(performerFilter = {}) {
       };
     }
     
-    // Pick the next highest-ranked remaining opponent
-    // Add randomization: select from opponents at similar rank (within 3 positions)
-    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
-    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
+    // Pick the next highest-ranked remaining opponent with randomization
+    const nextOpponent = selectRandomOpponent(remainingOpponents);
     const nextOpponentIndex = performers.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -1230,10 +1236,8 @@ async function fetchPerformerCount(performerFilter = {}) {
       };
     }
     
-    // Pick the next highest-ranked remaining opponent
-    // Add randomization: select from opponents at similar rank (within 3 positions)
-    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
-    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
+    // Pick the next highest-ranked remaining opponent with randomization
+    const nextOpponent = selectRandomOpponent(remainingOpponents);
     const nextOpponentIndex = performers.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -1483,10 +1487,8 @@ async function fetchPerformerCount(performerFilter = {}) {
       };
     }
     
-    // Pick the next highest-ranked remaining opponent
-    // Add randomization: select from opponents at similar rank (within 3 positions)
-    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
-    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
+    // Pick the next highest-ranked remaining opponent with randomization
+    const nextOpponent = selectRandomOpponent(remainingOpponents);
     const nextOpponentIndex = images.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -1572,10 +1574,8 @@ async function fetchPerformerCount(performerFilter = {}) {
       };
     }
     
-    // Pick the next highest-ranked remaining opponent
-    // Add randomization: select from opponents at similar rank (within 3 positions)
-    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
-    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
+    // Pick the next highest-ranked remaining opponent with randomization
+    const nextOpponent = selectRandomOpponent(remainingOpponents);
     const nextOpponentIndex = images.findIndex(s => s.id === nextOpponent.id);
     
     return { 
