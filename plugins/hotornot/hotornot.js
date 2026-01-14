@@ -65,7 +65,7 @@
     image_path
     rating100
     details
-    customFields {
+    custom_fields {
       key
       value
     }
@@ -600,17 +600,17 @@ async function fetchSceneCount() {
   // ============================================
 
   /**
-   * Parse ELO match data from performer customFields
+   * Parse ELO match data from performer custom_fields
    * @param {Object} performer - Performer object from GraphQL
    * @returns {number} matches - Number of ELO matches played
    */
   function parsePerformerEloData(performer) {
-    if (!performer || !performer.customFields) {
+    if (!performer || !performer.custom_fields) {
       return 0;
     }
     
     // Find the elo_matches custom field
-    const eloField = performer.customFields.find(f => f.key === "elo_matches");
+    const eloField = performer.custom_fields.find(f => f.key === "elo_matches");
     if (!eloField) {
       return 0;
     }
