@@ -810,11 +810,35 @@ async function fetchSceneCount() {
     const loserChange = newLoserRating - loserRating;
     
     // Set temporary win/loss flags for stats tracking
-    if (winnerObj && battleType === "performers") {
-      winnerObj._tempWon = true;
-    }
-    if (loserObj && battleType === "performers") {
-      loserObj._tempWon = false;
+    // In gauntlet/champion modes, only track stats for the active champion/falling performer
+    if (battleType === "performers") {
+      if (currentMode === "gauntlet" || currentMode === "champion") {
+        const isChampionWinner = gauntletChampion && winnerId === gauntletChampion.id;
+        const isFallingWinner = gauntletFalling && gauntletFallingItem && winnerId === gauntletFallingItem.id;
+        const isChampionLoser = gauntletChampion && loserId === gauntletChampion.id;
+        const isFallingLoser = gauntletFalling && gauntletFallingItem && loserId === gauntletFallingItem.id;
+        
+        // Only set flags for active participants (champion or falling)
+        if (winnerObj && (isChampionWinner || isFallingWinner)) {
+          winnerObj._tempWon = true;
+        }
+        if (loserObj && (isChampionLoser || isFallingLoser)) {
+          loserObj._tempWon = false;
+        }
+        
+        // For defender at rank #1 who lost, also track their loss
+        if (loserRank === 1 && !isChampionLoser && !isFallingLoser && loserObj) {
+          loserObj._tempWon = false;
+        }
+      } else {
+        // Swiss mode: track stats for both participants
+        if (winnerObj) {
+          winnerObj._tempWon = true;
+        }
+        if (loserObj) {
+          loserObj._tempWon = false;
+        }
+      }
     }
     
     // Update items in Stash (only if changed)
