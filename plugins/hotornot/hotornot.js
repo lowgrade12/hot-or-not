@@ -601,14 +601,15 @@ async function fetchSceneCount() {
 
   /**
    * Select a random opponent from the closest remaining opponents
-   * @param {Array} remainingOpponents - Array of remaining opponents sorted by rank
+   * Assumes remainingOpponents array is in rank order (best first, closest to champion last)
+   * @param {Array} remainingOpponents - Array of remaining opponents in rank order
    * @param {number} maxChoices - Maximum number of closest opponents to consider (default: 3)
-   * @returns {Object} Randomly selected opponent from the closest options, or null if no opponents
+   * @returns {Object|null} Randomly selected opponent from the closest options, or null if no opponents
    */
   function selectRandomOpponent(remainingOpponents, maxChoices = 3) {
     if (remainingOpponents.length === 0) return null;
     
-    // Get up to maxChoices closest opponents (or all remaining if fewer)
+    // Get up to maxChoices closest opponents from the end of the array
     const closestOpponents = remainingOpponents.slice(-maxChoices);
     return closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
   }
