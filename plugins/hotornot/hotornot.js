@@ -1603,6 +1603,144 @@ async function fetchPerformerCount(performerFilter = {}) {
     `;
   }
 
+  // ============================================
+  // PERFORMER SELECTION FOR GAUNTLET
+  // ============================================
+
+  async function fetchPerformersForSelection(count = 5) {
+    const performerFilter = getPerformerFilter();
+    const totalPerformers = await fetchPerformerCount(performerFilter);
+    
+    if (totalPerformers < count) {
+      count = totalPerformers;
+    }
+
+    const performerQuery = `
+      query FindRandomPerformers($performer_filter: PerformerFilterType, $filter: FindFilterType) {
+        findPerformers(performer_filter: $performer_filter, filter: $filter) {
+          performers {
+            ${PERFORMER_FRAGMENT}
+          }
+        }
+      }
+    `;
+
+    const result = await graphqlQuery(performerQuery, {
+      performer_filter: performerFilter,
+      filter: {
+        per_page: Math.min(100, totalPerformers),
+        sort: "random"
+      }
+    });
+
+    const allPerformers = result.findPerformers.performers || [];
+    const shuffled = allPerformers.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  }
+
+  function createPerformerSelectionCard(performer) {
+    const name = performer.name || `Performer #${performer.id}`;
+    const imagePath = performer.image_path || null;
+    const rating = performer.rating100 ? `${performer.rating100}/100` : "Unrated";
+    
+    return `
+      <div class="hon-selection-card" data-performer-id="${performer.id}">
+        <div class="hon-selection-image-container">
+          ${imagePath 
+            ? `<img class="hon-selection-image" src="${imagePath}" alt="${name}" loading="lazy" />`
+            : `<div class="hon-selection-image hon-no-image">No Image</div>`
+          }
+        </div>
+        <div class="hon-selection-info">
+          <h4 class="hon-selection-name">${name}</h4>
+          <div class="hon-selection-rating">${rating}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadPerformerSelection() {
+    const selectionContainer = document.getElementById("hon-performer-selection");
+    const performerList = document.getElementById("hon-performer-list");
+    
+    if (!selectionContainer || !performerList) return;
+
+    try {
+      const performers = await fetchPerformersForSelection(5);
+      
+      if (performers.length === 0) {
+        performerList.innerHTML = '<div class="hon-error">No performers available for selection.</div>';
+        return;
+      }
+
+      performerList.innerHTML = performers.map(p => createPerformerSelectionCard(p)).join('');
+      
+      // Attach click handlers
+      performerList.querySelectorAll('.hon-selection-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const performerId = card.dataset.performerId;
+          const selectedPerformer = performers.find(p => p.id.toString() === performerId);
+          if (selectedPerformer) {
+            startGauntletWithPerformer(selectedPerformer);
+          }
+        });
+      });
+    } catch (error) {
+      console.error("[HotOrNot] Error loading performer selection:", error);
+      performerList.innerHTML = `<div class="hon-error">Error loading performers: ${error.message}</div>`;
+    }
+  }
+
+  function startGauntletWithPerformer(performer) {
+    // Set the selected performer as the gauntlet champion
+    gauntletChampion = performer;
+    gauntletWins = 0;
+    gauntletDefeated = [];
+    gauntletFalling = false;
+    gauntletFallingItem = null;
+    
+    // Hide the selection UI
+    const selectionContainer = document.getElementById("hon-performer-selection");
+    if (selectionContainer) {
+      selectionContainer.style.display = "none";
+    }
+    
+    // Show the comparison area and actions
+    const comparisonArea = document.getElementById("hon-comparison-area");
+    const actionsEl = document.querySelector(".hon-actions");
+    if (comparisonArea) comparisonArea.style.display = "";
+    if (actionsEl) actionsEl.style.display = "";
+    
+    // Load the first matchup
+    loadNewPair();
+  }
+
+  function showPerformerSelection() {
+    const selectionContainer = document.getElementById("hon-performer-selection");
+    if (selectionContainer) {
+      selectionContainer.style.display = "block";
+      loadPerformerSelection();
+    }
+    
+    // Hide the comparison area until a performer is selected
+    const comparisonArea = document.getElementById("hon-comparison-area");
+    const actionsEl = document.querySelector(".hon-actions");
+    if (comparisonArea) comparisonArea.style.display = "none";
+    if (actionsEl) actionsEl.style.display = "none";
+  }
+
+  function hidePerformerSelection() {
+    const selectionContainer = document.getElementById("hon-performer-selection");
+    if (selectionContainer) {
+      selectionContainer.style.display = "none";
+    }
+    
+    // Show the comparison area
+    const comparisonArea = document.getElementById("hon-comparison-area");
+    const actionsEl = document.querySelector(".hon-actions");
+    if (comparisonArea) comparisonArea.style.display = "";
+    if (actionsEl) actionsEl.style.display = "";
+  }
 
   function createMainUI() {
     const itemType = battleType === "performers" ? "performers" : (battleType === "images" ? "images" : "scenes");
@@ -1633,6 +1771,13 @@ async function fetchPerformerCount(performerFilter = {}) {
           </div>
         </div>
 
+        <div id="hon-performer-selection" class="hon-performer-selection" style="display: none;">
+          <h3 class="hon-selection-title">Select a ${itemTypeSingular} to run the gauntlet:</h3>
+          <div id="hon-performer-list" class="hon-performer-list">
+            <div class="hon-loading">Loading ${itemType}...</div>
+          </div>
+        </div>
+
         <div class="hon-content">
           <div id="hon-comparison-area" class="hon-comparison-area">
             <div class="hon-loading">Loading...</div>
@@ -1658,6 +1803,12 @@ async function fetchPerformerCount(performerFilter = {}) {
     disableChoice = false;
     const comparisonArea = document.getElementById("hon-comparison-area");
     if (!comparisonArea) return;
+
+    // For gauntlet mode with performers, show selection if no champion yet
+    if (currentMode === "gauntlet" && battleType === "performers" && !gauntletChampion && !gauntletFalling) {
+      showPerformerSelection();
+      return;
+    }
 
     // Only show loading on first load (when empty or already showing loading)
     if (!comparisonArea.querySelector('.hon-vs-container')) {
@@ -2110,6 +2261,11 @@ function addFloatingButton() {
           // Re-show actions (skip button) in case it was hidden
           const actionsEl = document.querySelector(".hon-actions");
           if (actionsEl) actionsEl.style.display = "";
+          
+          // Hide performer selection if not in gauntlet mode
+          if (currentMode !== "gauntlet") {
+            hidePerformerSelection();
+          }
           
           // Load new pair in new mode
           loadNewPair();

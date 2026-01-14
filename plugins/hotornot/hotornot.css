@@ -810,3 +810,107 @@
 .hon-performer-rank.hon-scene-rank {}
 
 /* End shim */
+
+/* ============================================
+   PERFORMER SELECTION FOR GAUNTLET
+   ============================================ */
+
+.hon-performer-selection {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 12px;
+}
+
+.hon-selection-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.hon-performer-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.hon-selection-card {
+  background: #252525;
+  border: 2px solid #444;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.hon-selection-card:hover {
+  border-color: #0d6efd;
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+}
+
+.hon-selection-image-container {
+  width: 100%;
+  aspect-ratio: 2/3;
+  overflow: hidden;
+  background: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hon-selection-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hon-selection-image.hon-no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.hon-selection-info {
+  padding: 10px;
+  text-align: center;
+}
+
+.hon-selection-name {
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hon-selection-rating {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+@media (max-width: 768px) {
+  .hon-performer-list {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+  }
+  
+  .hon-selection-name {
+    font-size: 0.85rem;
+  }
+  
+  .hon-selection-rating {
+    font-size: 0.75rem;
+  }
+}
