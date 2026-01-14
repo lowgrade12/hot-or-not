@@ -645,7 +645,7 @@ async function fetchSceneCount() {
         return 12;
       }
       
-      // Well-established: Low K-factor for stability
+      // Well-established (30+ matches): Low K-factor for stability
       return 8;
     }
     
@@ -708,10 +708,14 @@ async function fetchSceneCount() {
     } else {
       // Swiss mode: True ELO - both change based on expected outcome
       const expectedWinner = 1 / (1 + Math.pow(10, ratingDiff / 40));
-      const kFactor = getKFactor(winnerRating, winnerMatchCount);
       
-      winnerGain = Math.max(0, Math.round(kFactor * (1 - expectedWinner)));
-      loserLoss = Math.max(0, Math.round(kFactor * expectedWinner));
+      // Use individual K-factors for each performer for more accurate adjustments
+      const winnerK = getKFactor(winnerRating, winnerMatchCount);
+      const loserK = getKFactor(loserRating, loserMatchCount);
+      
+      // Calculate changes using their respective K-factors
+      winnerGain = Math.max(0, Math.round(winnerK * (1 - expectedWinner)));
+      loserLoss = Math.max(0, Math.round(loserK * expectedWinner));
     }
     
     const newWinnerRating = Math.min(100, Math.max(1, winnerRating + winnerGain));
