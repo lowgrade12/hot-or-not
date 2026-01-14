@@ -319,7 +319,9 @@ async function fetchSceneCount() {
     }
     
     // Pick the next highest-ranked remaining opponent
-    const nextOpponent = remainingOpponents[remainingOpponents.length - 1]; // Closest to champion
+    // Add randomization: select from opponents at similar rank (within 3 positions)
+    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
+    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
     const nextOpponentIndex = scenes.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -406,7 +408,9 @@ async function fetchSceneCount() {
     }
     
     // Pick the next highest-ranked remaining opponent
-    const nextOpponent = remainingOpponents[remainingOpponents.length - 1];
+    // Add randomization: select from opponents at similar rank (within 3 positions)
+    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
+    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
     const nextOpponentIndex = scenes.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -587,7 +591,7 @@ async function fetchSceneCount() {
       
       // Save stats as JSON string in custom field
       variables.fields = {
-        elo_stats: JSON.stringify(newStats)
+        hotornot_stats: JSON.stringify(newStats)
       };
     }
     
@@ -618,9 +622,9 @@ async function fetchSceneCount() {
     }
     
     // Check for Approach 2 stats (comprehensive tracking)
-    if (performer.custom_fields.elo_stats) {
+    if (performer.custom_fields.hotornot_stats) {
       try {
-        const stats = JSON.parse(performer.custom_fields.elo_stats);
+        const stats = JSON.parse(performer.custom_fields.hotornot_stats);
         return {
           total_matches: stats.total_matches || 0,
           wins: stats.wins || 0,
@@ -631,7 +635,7 @@ async function fetchSceneCount() {
           last_match: stats.last_match || null
         };
       } catch (e) {
-        console.warn(`[HotOrNot] Failed to parse elo_stats for performer ${performer.id}:`, e);
+        console.warn(`[HotOrNot] Failed to parse hotornot_stats for performer ${performer.id}:`, e);
       }
     }
     
@@ -1136,7 +1140,9 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Pick the next highest-ranked remaining opponent
-    const nextOpponent = remainingOpponents[remainingOpponents.length - 1]; // Closest to champion
+    // Add randomization: select from opponents at similar rank (within 3 positions)
+    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
+    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
     const nextOpponentIndex = performers.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -1225,7 +1231,9 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Pick the next highest-ranked remaining opponent
-    const nextOpponent = remainingOpponents[remainingOpponents.length - 1];
+    // Add randomization: select from opponents at similar rank (within 3 positions)
+    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
+    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
     const nextOpponentIndex = performers.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -1476,7 +1484,9 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Pick the next highest-ranked remaining opponent
-    const nextOpponent = remainingOpponents[remainingOpponents.length - 1]; // Closest to champion
+    // Add randomization: select from opponents at similar rank (within 3 positions)
+    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
+    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
     const nextOpponentIndex = images.findIndex(s => s.id === nextOpponent.id);
     
     return { 
@@ -1563,7 +1573,9 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Pick the next highest-ranked remaining opponent
-    const nextOpponent = remainingOpponents[remainingOpponents.length - 1];
+    // Add randomization: select from opponents at similar rank (within 3 positions)
+    const closestOpponents = remainingOpponents.slice(-3); // Get up to 3 closest opponents
+    const nextOpponent = closestOpponents[Math.floor(Math.random() * closestOpponents.length)];
     const nextOpponentIndex = images.findIndex(s => s.id === nextOpponent.id);
     
     return { 
