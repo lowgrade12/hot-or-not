@@ -561,38 +561,37 @@ async function fetchSceneCount() {
 
   async function updatePerformerRating(performerId, newRating, performerObj = null) {
     const mutation = `
-      mutation PerformerUpdate($input: PerformerUpdateInput!) {
-        performerUpdate(input: $input) {
+      mutation UpdatePerformerCustomFields($id: ID!, $rating: Int!, $fields: Map) {
+        performerUpdate(input: {
+          id: $id,
+          rating100: $rating,
+          custom_fields: {
+            partial: $fields
+          }
+        }) {
           id
           rating100
-          customFields {
-            key
-            value
-          }
+          custom_fields
         }
       }
     `;
   
-    const input = {
+    const variables = {
       id: performerId,
-      rating100: Math.round(newRating)
+      rating: Math.round(newRating)
     };
     
     // Update match count if performer object provided
     if (performerObj && battleType === "performers") {
       const currentMatches = parsePerformerEloData(performerObj);
       
-      // Preserve existing custom fields and update only elo_matches
-      const existingFields = performerObj.customFields || [];
-      const otherFields = existingFields.filter(f => f.key !== "elo_matches");
-      
-      input.customFields = [
-        ...otherFields,
-        { key: "elo_matches", value: String(currentMatches + 1) }
-      ];
+      // Use partial update to only update elo_matches field
+      variables.fields = {
+        elo_matches: String(currentMatches + 1)
+      };
     }
     
-    return await graphqlQuery(mutation, { input });
+    return await graphqlQuery(mutation, variables);
   }
 
 
