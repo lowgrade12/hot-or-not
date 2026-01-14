@@ -65,10 +65,7 @@
     image_path
     rating100
     details
-    custom_fields {
-      key
-      value
-    }
+    custom_fields
     birthdate
     ethnicity
     country
@@ -609,14 +606,14 @@ async function fetchSceneCount() {
       return 0;
     }
     
-    // Find the elo_matches custom field
-    const eloField = performer.custom_fields.find(f => f.key === "elo_matches");
-    if (!eloField) {
+    // custom_fields is now a Map object, access directly by key
+    const eloMatches = performer.custom_fields.elo_matches;
+    if (!eloMatches) {
       return 0;
     }
     
     // Parse as integer, default to 0 if invalid
-    const matches = parseInt(eloField.value, 10);
+    const matches = parseInt(eloMatches, 10);
     return isNaN(matches) ? 0 : matches;
   }
 
