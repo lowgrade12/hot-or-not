@@ -1074,7 +1074,6 @@ async function fetchPerformerCount(performerFilter = {}) {
           
           // Convert Stash's ( ) encoding back to standard JSON { }
           // Must handle quoted strings properly to avoid replacing () inside string values
-          let depth = 0;
           let inString = false;
           let escape = false;
           const chars = [];
@@ -1103,10 +1102,8 @@ async function fetchPerformerCount(performerFilter = {}) {
             if (!inString) {
               if (char === '(') {
                 chars.push('{');
-                depth++;
               } else if (char === ')') {
                 chars.push('}');
-                depth--;
               } else {
                 chars.push(char);
               }
@@ -1162,6 +1159,13 @@ async function fetchPerformerCount(performerFilter = {}) {
         // Skip if no value
         if (criterion.value === undefined || criterion.value === null) {
           console.warn(`[HotOrNot] Criterion "${criterion.type}" has no value, skipping`);
+          return;
+        }
+        
+        // Basic validation: criterion values should be objects, strings, numbers, or arrays
+        const valueType = typeof criterion.value;
+        if (valueType !== 'object' && valueType !== 'string' && valueType !== 'number' && !Array.isArray(criterion.value)) {
+          console.warn(`[HotOrNot] Criterion "${criterion.type}" has unexpected value type: ${valueType}, skipping`);
           return;
         }
         
