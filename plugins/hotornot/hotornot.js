@@ -1123,6 +1123,7 @@ async function fetchSceneCount() {
           value: criteria.value.value,
           modifier: criteria.modifier || 'EQUALS'
         };
+        console.log('[HotOrNot] Applied created_at filter:', filter.created_at);
       }
       
       // Handle rating filter (numeric comparison)
@@ -1133,6 +1134,7 @@ async function fetchSceneCount() {
             value: ratingValue,
             modifier: criteria.modifier || 'EQUALS'
           };
+          console.log('[HotOrNot] Applied rating100 filter:', filter.rating100);
         }
       }
       
@@ -1142,6 +1144,7 @@ async function fetchSceneCount() {
           value: criteria.value.value,
           modifier: criteria.modifier || 'EQUALS'
         };
+        console.log('[HotOrNot] Applied birthdate filter:', filter.birthdate);
       }
       
       // Handle tag filter (includes/excludes tags)
@@ -1152,6 +1155,7 @@ async function fetchSceneCount() {
           modifier: criteria.modifier || 'INCLUDES_ALL',
           depth: criteria.depth || 0
         };
+        console.log('[HotOrNot] Applied tags filter:', filter.tags);
       }
       
       // Handle studio filter
@@ -1160,6 +1164,7 @@ async function fetchSceneCount() {
           value: Array.isArray(criteria.value) ? criteria.value : [criteria.value],
           modifier: criteria.modifier || 'INCLUDES'
         };
+        console.log('[HotOrNot] Applied studios filter:', filter.studios);
       }
       
       // Handle ethnicity filter
@@ -1168,6 +1173,7 @@ async function fetchSceneCount() {
           value: criteria.value.value,
           modifier: criteria.modifier || 'EQUALS'
         };
+        console.log('[HotOrNot] Applied ethnicity filter:', filter.ethnicity);
       }
       
       // Handle country filter
@@ -1176,10 +1182,13 @@ async function fetchSceneCount() {
           value: criteria.value.value,
           modifier: criteria.modifier || 'EQUALS'
         };
+        console.log('[HotOrNot] Applied country filter:', filter.country);
       }
       
-      // Log successful filter conversion for debugging
-      console.log('[HotOrNot] Converted filter criteria:', criteria.type, '→', filter[criteria.type]);
+      // Log if filter type was not recognized
+      if (Object.keys(filter).length === 0) {
+        console.log('[HotOrNot] Unsupported filter type:', criteria.type);
+      }
       
     } catch (e) {
       console.warn('[HotOrNot] Error converting filter criteria:', e);
