@@ -682,7 +682,7 @@ async function fetchSceneCount() {
   /**
    * Update performer stats after a match
    * @param {Object} currentStats - Current stats object from parsePerformerEloData
-   * @param {boolean|null} won - True if performer won, false if lost, null for participation-only (no win/loss tracking)
+   * @param {boolean|null} won - True if performer won, false if lost, null for participation-only (no win/loss tracking, gauntlet mode defenders only)
    * @returns {Object} Updated stats object
    */
   function updatePerformerStats(currentStats, won) {
@@ -692,7 +692,7 @@ async function fetchSceneCount() {
       last_match: new Date().toISOString()
     };
     
-    // If won is null, this is participation-only (gauntlet/champion defender benchmark)
+    // If won is null, this is participation-only (gauntlet mode defender benchmark only)
     // Only increment match count and timestamp, don't track win/loss or streaks
     if (won === null) {
       newStats.wins = currentStats.wins;
