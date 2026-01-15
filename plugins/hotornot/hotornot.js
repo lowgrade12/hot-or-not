@@ -802,21 +802,35 @@ async function fetchSceneCount() {
     return false;
   }
 
-  function handleComparison(winnerId, loserId, winnerCurrentRating, loserCurrentRating, loserRank = null, winnerObj = null, loserObj = null) {
+  async function handleComparison(winnerId, loserId, winnerCurrentRating, loserCurrentRating, loserRank = null, winnerObj = null, loserObj = null) {
     const winnerRating = winnerCurrentRating || 50;
     const loserRating = loserCurrentRating || 50;
     
     const ratingDiff = loserRating - winnerRating;
     
+    // Fetch fresh performer data to ensure we have current stats
+    // This prevents stats from being overwritten when performers have consecutive matches
+    let freshWinnerObj = winnerObj;
+    let freshLoserObj = loserObj;
+    
+    if (battleType === "performers") {
+      if (winnerObj && winnerId) {
+        freshWinnerObj = await fetchPerformerById(winnerId);
+      }
+      if (loserObj && loserId) {
+        freshLoserObj = await fetchPerformerById(loserId);
+      }
+    }
+    
     // Parse match counts from custom fields (only for performers)
     let winnerMatchCount = null;
     let loserMatchCount = null;
-    if (battleType === "performers" && winnerObj) {
-      const winnerStats = parsePerformerEloData(winnerObj);
+    if (battleType === "performers" && freshWinnerObj) {
+      const winnerStats = parsePerformerEloData(freshWinnerObj);
       winnerMatchCount = winnerStats.total_matches;
     }
-    if (battleType === "performers" && loserObj) {
-      const loserStats = parsePerformerEloData(loserObj);
+    if (battleType === "performers" && freshLoserObj) {
+      const loserStats = parsePerformerEloData(freshLoserObj);
       loserMatchCount = loserStats.total_matches;
     }
     
@@ -876,21 +890,21 @@ async function fetchSceneCount() {
     // - null for defenders in gauntlet/champion mode (track participation only)
     
     // Winner updates
-    if (winnerChange !== 0 || (battleType === "performers" && winnerObj && shouldTrackWinner)) {
+    if (winnerChange !== 0 || (battleType === "performers" && freshWinnerObj && shouldTrackWinner)) {
       // Update rating if changed, or always update stats if active participant
-      updateItemRating(winnerId, newWinnerRating, shouldTrackWinner ? winnerObj : null, shouldTrackWinner ? true : null);
-    } else if (battleType === "performers" && winnerObj && (currentMode === "gauntlet" || currentMode === "champion")) {
+      updateItemRating(winnerId, newWinnerRating, shouldTrackWinner ? freshWinnerObj : null, shouldTrackWinner ? true : null);
+    } else if (battleType === "performers" && freshWinnerObj && (currentMode === "gauntlet" || currentMode === "champion")) {
       // Defender in gauntlet/champion mode - track participation only
-      updateItemRating(winnerId, newWinnerRating, winnerObj, null);
+      updateItemRating(winnerId, newWinnerRating, freshWinnerObj, null);
     }
     
     // Loser updates
-    if (loserChange !== 0 || (battleType === "performers" && loserObj && shouldTrackLoser)) {
+    if (loserChange !== 0 || (battleType === "performers" && freshLoserObj && shouldTrackLoser)) {
       // Update rating if changed, or always update stats if active participant
-      updateItemRating(loserId, newLoserRating, shouldTrackLoser ? loserObj : null, shouldTrackLoser ? false : null);
-    } else if (battleType === "performers" && loserObj && (currentMode === "gauntlet" || currentMode === "champion")) {
+      updateItemRating(loserId, newLoserRating, shouldTrackLoser ? freshLoserObj : null, shouldTrackLoser ? false : null);
+    } else if (battleType === "performers" && freshLoserObj && (currentMode === "gauntlet" || currentMode === "champion")) {
       // Defender in gauntlet/champion mode - track participation only
-      updateItemRating(loserId, newLoserRating, loserObj, null);
+      updateItemRating(loserId, newLoserRating, freshLoserObj, null);
     }
     
     return { newWinnerRating, newLoserRating, winnerChange, loserChange };
@@ -984,6 +998,24 @@ async function fetchPerformerCount(performerFilter = {}) {
   const shuffled = allPerformers.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, 2);
 }
+
+  /**
+   * Fetch the latest performer data by ID to get current stats
+   * @param {string} performerId - ID of the performer to fetch
+   * @returns {Object} Performer object with latest data from database
+   */
+  async function fetchPerformerById(performerId) {
+    const performerQuery = `
+      query FindPerformer($id: ID!) {
+        findPerformer(id: $id) {
+          ${PERFORMER_FRAGMENT}
+        }
+      }
+    `;
+    
+    const result = await graphqlQuery(performerQuery, { id: performerId });
+    return result.findPerformer;
+  }
 
   /**
    * Calculate a weight for performer selection based on last match time.
@@ -2200,7 +2232,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
   }
 
-  function handleChooseItem(event) {
+  async function handleChooseItem(event) {
     if(disableChoice) return;
     disableChoice = true;
     const body = event.currentTarget;
@@ -2219,7 +2251,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     if (battleType === "images") {
       const winnerItem = winnerId === currentPair.left.id ? currentPair.left : currentPair.right;
       const loserItem = loserId === currentPair.left.id ? currentPair.left : currentPair.right;
-      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = handleComparison(
+      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = await handleComparison(
         winnerId, loserId, winnerRating, loserRating, null, winnerItem, loserItem
       );
 
@@ -2252,11 +2284,19 @@ async function fetchPerformerCount(performerFilter = {}) {
           // Set their rating to just above the scene they beat
           const finalRating = Math.min(100, loserRating + 1);
           
+          // Fetch latest performer data to get current stats before updating
+          const freshFallingPerformer = battleType === "performers" 
+            ? await fetchPerformerById(gauntletFallingItem.id)
+            : gauntletFallingItem;
+          const freshLoserPerformer = battleType === "performers" 
+            ? await fetchPerformerById(loserId)
+            : loserItem;
+          
           // Track this as a win for the falling performer
-          updateItemRating(gauntletFallingItem.id, finalRating, gauntletFallingItem, true);
+          updateItemRating(gauntletFallingItem.id, finalRating, freshFallingPerformer, true);
           
           // Track participation for the loser (defender)
-          updateItemRating(loserId, loserRating, loserItem, null);
+          updateItemRating(loserId, loserRating, freshLoserPerformer, null);
           
           // Final rank is one above the opponent (we beat them, so we're above them)
           const opponentRank = loserId === currentPair.left.id ? currentRanks.left : currentRanks.right;
@@ -2275,12 +2315,20 @@ async function fetchPerformerCount(performerFilter = {}) {
           // Falling scene lost again - keep falling
           gauntletDefeated.push(winnerId);
           
+          // Fetch latest performer data to get current stats before updating
+          const freshFallingPerformer = battleType === "performers" 
+            ? await fetchPerformerById(gauntletFallingItem.id)
+            : gauntletFallingItem;
+          const freshWinnerPerformer = battleType === "performers" 
+            ? await fetchPerformerById(winnerId)
+            : winnerItem;
+          
           // Track stats for both participants
           // Track loss for the falling performer
-          updateItemRating(gauntletFallingItem.id, loserRating, gauntletFallingItem, false);
+          updateItemRating(gauntletFallingItem.id, loserRating, freshFallingPerformer, false);
           
           // Track participation for the winner (defender)
-          updateItemRating(winnerId, winnerRating, winnerItem, null);
+          updateItemRating(winnerId, winnerRating, freshWinnerPerformer, null);
           
           // Visual feedback
           winnerCard.classList.add("hon-winner");
@@ -2294,7 +2342,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       }
       
       // Normal climbing - calculate rating changes (pass loserRank for #1 dethrone)
-      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = handleComparison(
+      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = await handleComparison(
         winnerId, loserId, winnerRating, loserRating, loserRank, winnerItem, loserItem
       );
       
@@ -2343,7 +2391,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       const loserItem = loserId === currentPair.left.id ? currentPair.left : currentPair.right;
       
       // Calculate rating changes (pass loserRank for #1 dethrone)
-      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = handleComparison(
+      const { newWinnerRating, newLoserRating, winnerChange, loserChange } = await handleComparison(
         winnerId, loserId, winnerRating, loserRating, loserRank, winnerItem, loserItem
       );
       
@@ -2379,7 +2427,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     // For Swiss mode (performers only, images are handled above): Calculate and show rating changes
     const winnerItem = winnerId === currentPair.left.id ? currentPair.left : currentPair.right;
     const loserItem = loserId === currentPair.left.id ? currentPair.left : currentPair.right;
-    const { newWinnerRating, newLoserRating, winnerChange, loserChange } = handleComparison(
+    const { newWinnerRating, newLoserRating, winnerChange, loserChange } = await handleComparison(
       winnerId, loserId, winnerRating, loserRating, null, winnerItem, loserItem
     );
 
