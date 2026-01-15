@@ -815,19 +815,11 @@ async function fetchSceneCount() {
     
     if (battleType === "performers") {
       // Fetch both performers in parallel for better performance
-      const fetchPromises = [];
-      if (winnerObj && winnerId) {
-        fetchPromises.push(fetchPerformerById(winnerId));
-      } else {
-        fetchPromises.push(Promise.resolve(null));
-      }
-      if (loserObj && loserId) {
-        fetchPromises.push(fetchPerformerById(loserId));
-      } else {
-        fetchPromises.push(Promise.resolve(null));
-      }
+      const [fetchedWinner, fetchedLoser] = await Promise.all([
+        (winnerObj && winnerId) ? fetchPerformerById(winnerId) : Promise.resolve(null),
+        (loserObj && loserId) ? fetchPerformerById(loserId) : Promise.resolve(null)
+      ]);
       
-      const [fetchedWinner, fetchedLoser] = await Promise.all(fetchPromises);
       freshWinnerObj = fetchedWinner || winnerObj;
       freshLoserObj = fetchedLoser || loserObj;
     }
@@ -1015,7 +1007,8 @@ async function fetchPerformerCount(performerFilter = {}) {
    * @returns {Object|null} Performer object with latest data from database, or null if not found
    */
   async function fetchPerformerById(performerId) {
-    if (!performerId) {
+    // Validate performerId is a valid non-empty string
+    if (!performerId || typeof performerId !== 'string' || performerId.trim() === '') {
       return null;
     }
     
