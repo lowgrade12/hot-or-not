@@ -2251,8 +2251,13 @@ async function fetchPerformerCount(performerFilter = {}) {
           // Falling scene won - found their floor!
           // Set their rating to just above the scene they beat
           const finalRating = Math.min(100, loserRating + 1);
+          
           // Track this as a win for the falling performer
           updateItemRating(gauntletFallingItem.id, finalRating, gauntletFallingItem, true);
+          
+          // Track participation for the loser (defender)
+          const loserItem = loserId === currentPair.left.id ? currentPair.left : currentPair.right;
+          updateItemRating(loserId, loserRating, loserItem, null);
           
           // Final rank is one above the opponent (we beat them, so we're above them)
           const opponentRank = loserId === currentPair.left.id ? currentRanks.left : currentRanks.right;
@@ -2270,6 +2275,16 @@ async function fetchPerformerCount(performerFilter = {}) {
         } else {
           // Falling scene lost again - keep falling
           gauntletDefeated.push(winnerId);
+          
+          // Track stats for both participants
+          const winnerItem = winnerId === currentPair.left.id ? currentPair.left : currentPair.right;
+          const loserItem = loserId === currentPair.left.id ? currentPair.left : currentPair.right;
+          
+          // Track loss for the falling performer
+          updateItemRating(gauntletFallingItem.id, loserRating, gauntletFallingItem, false);
+          
+          // Track participation for the winner (defender)
+          updateItemRating(winnerId, winnerRating, winnerItem, null);
           
           // Visual feedback
           winnerCard.classList.add("hon-winner");
