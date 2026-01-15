@@ -1363,43 +1363,17 @@ async function fetchSceneCount() {
   }
 
   /**
-   * Calculate K-factor based on match count (experience) and mode
-   * @param {number} currentRating - Current ELO rating
-   * @param {number} matchCount - Number of matches played
+   * Calculate K-factor based on mode
+   * Uses a fixed K-factor for consistent and predictable ranking changes
    * @param {string} mode - Current game mode ("swiss", "gauntlet", "champion")
    * @returns {number} K-factor value
    */
-  function getKFactor(currentRating, matchCount = null, mode = "swiss") {
-    let baseKFactor;
-    
-    // If match count is available, use it for more accurate K-factor
-    if (matchCount !== null && matchCount !== undefined) {
-      // New performers: High K-factor for fast convergence
-      if (matchCount < 10) {
-        baseKFactor = 16;
-      }
-      // Moderately established: Medium K-factor
-      else if (matchCount < 30) {
-        baseKFactor = 12;
-      }
-      // Well-established (30+ matches): Low K-factor for stability
-      else {
-        baseKFactor = 8;
-      }
-    } else {
-      // Fallback to rating-based heuristic (legacy behavior)
-      // Items near the default rating (50) are likely less established
-      // Items far from 50 have likely had more comparisons
-      const distanceFromDefault = Math.abs(currentRating - 50);
-      
-      if (distanceFromDefault < 10) {
-        baseKFactor = 12;  // Higher K for unproven items near default
-      } else if (distanceFromDefault < 25) {
-        baseKFactor = 10;  // Medium K for moderately established items
-      } else {
-        baseKFactor = 8;   // Lower K for well-established items
-      }
-    }
+  function getKFactor(mode = "swiss") {
+    // Fixed K-factor of 8 for the 1-100 rating scale
+    // This provides consistent, predictable rating changes:
+    // - Maximum gain/loss per match ≈ 8 points (when probability is 0 or 1)
+    // - Typical gain/loss for evenly matched ≈ 4 points
+    const baseKFactor = 8;
     
     // Apply mode-specific multiplier
     // Champion mode: 0.5x K-factor (half the rating change of Swiss mode)
@@ -1479,19 +1453,11 @@ async function fetchSceneCount() {
       freshLoserObj = fetchedLoser || loserObj;
     }
     
-    // Parse match counts from custom fields (only for performers)
-    let winnerMatchCount = null;
-    let loserMatchCount = null;
-    if (battleType === "performers" && freshWinnerObj) {
-      const winnerStats = parsePerformerEloData(freshWinnerObj);
-      winnerMatchCount = winnerStats.total_matches;
-    }
-    if (battleType === "performers" && freshLoserObj) {
-      const loserStats = parsePerformerEloData(freshLoserObj);
-      loserMatchCount = loserStats.total_matches;
-    }
-    
     let winnerGain = 0, loserLoss = 0;
+    
+    // Calculate expected score using standard ELO formula
+    // Divisor of 40 is appropriate for 1-100 scale (10x smaller than traditional 400 for 1000-2000 scale)
+    const expectedWinner = 1 / (1 + Math.pow(10, ratingDiff / 40));
     
     if (currentMode === "gauntlet") {
       // In gauntlet, only the champion/falling scene changes rating
@@ -1502,8 +1468,7 @@ async function fetchSceneCount() {
       const isChampionLoser = gauntletChampion && loserId === gauntletChampion.id;
       const isFallingLoser = gauntletFalling && gauntletFallingItem && loserId === gauntletFallingItem.id;
       
-      const expectedWinner = 1 / (1 + Math.pow(10, ratingDiff / 40));
-      const kFactor = getKFactor(winnerRating, winnerMatchCount, "gauntlet");
+      const kFactor = getKFactor("gauntlet");
       
       // Only the active scene (champion or falling) gets rating changes
       if (isChampionWinner || isFallingWinner) {
@@ -1520,26 +1485,18 @@ async function fetchSceneCount() {
     } else if (currentMode === "champion") {
       // Champion mode: Both performers get rating updates, but at a reduced rate (50% of Swiss mode)
       // This allows rankings to evolve while still maintaining the "winner stays on" feel
-      const expectedWinner = 1 / (1 + Math.pow(10, ratingDiff / 40));
+      const kFactor = getKFactor("champion");
       
-      // Use individual K-factors for each performer with champion mode multiplier
-      const winnerK = getKFactor(winnerRating, winnerMatchCount, "champion");
-      const loserK = getKFactor(loserRating, loserMatchCount, "champion");
-      
-      // Calculate changes using their respective K-factors (reduced by 50% for champion mode)
-      winnerGain = Math.max(0, Math.round(winnerK * (1 - expectedWinner)));
-      loserLoss = Math.max(0, Math.round(loserK * expectedWinner));
+      // Calculate changes using the same K-factor for both (zero-sum property)
+      winnerGain = Math.max(0, Math.round(kFactor * (1 - expectedWinner)));
+      loserLoss = Math.max(0, Math.round(kFactor * expectedWinner));
     } else {
       // Swiss mode: True ELO - both change based on expected outcome
-      const expectedWinner = 1 / (1 + Math.pow(10, ratingDiff / 40));
+      const kFactor = getKFactor("swiss");
       
-      // Use individual K-factors for each performer for more accurate adjustments
-      const winnerK = getKFactor(winnerRating, winnerMatchCount, "swiss");
-      const loserK = getKFactor(loserRating, loserMatchCount, "swiss");
-      
-      // Calculate changes using their respective K-factors
-      winnerGain = Math.max(0, Math.round(winnerK * (1 - expectedWinner)));
-      loserLoss = Math.max(0, Math.round(loserK * expectedWinner));
+      // Calculate changes using the same K-factor for both (zero-sum property)
+      winnerGain = Math.max(0, Math.round(kFactor * (1 - expectedWinner)));
+      loserLoss = Math.max(0, Math.round(kFactor * expectedWinner));
     }
     
     const newWinnerRating = Math.min(100, Math.max(1, winnerRating + winnerGain));
