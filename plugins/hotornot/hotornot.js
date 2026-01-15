@@ -992,35 +992,106 @@ async function fetchPerformerCount(performerFilter = {}) {
     return countResult.findPerformers.count;
   }
 
+  /**
+   * Read the active performer filter from Stash's localStorage.
+   * 
+   * Stash stores filter state in localStorage under the key 'filter.performers'.
+   * The stored object is a serialized ListFilterModel containing:
+   * - criteria: Array of Criterion objects (needs conversion)
+   * - searchTerm: String search query
+   * - sortBy, sortDirection: Sorting options
+   * - etc.
+   * 
+   * We need to convert the criteria array into the GraphQL PerformerFilterType format.
+   * 
+   * @returns {Object} PerformerFilterType object for GraphQL queries
+   */
   function getPerformerFilter() {
     const filter = {};
     
     // Try to read the active filter from the performers page
     try {
       const savedFilter = localStorage.getItem('filter.performers');
-      if (savedFilter) {
-        const parsedFilter = JSON.parse(savedFilter);
-        // Use the criteria from the saved filter if it exists
-        // Note: When a filter is active, we use the user's exact filter criteria.
-        // This allows full customization - users can include/exclude any performers they want.
-        if (parsedFilter && parsedFilter.criteria) {
-          return parsedFilter.criteria;
+      if (!savedFilter) {
+        console.log('[HotOrNot] No saved filter found in localStorage');
+        return getDefaultFilter();
+      }
+      
+      const parsedFilter = JSON.parse(savedFilter);
+      console.log('[HotOrNot] Loaded filter from localStorage:', parsedFilter);
+      
+      // Check if this is a saved filter with a pre-converted object_filter
+      if (parsedFilter && parsedFilter.object_filter) {
+        console.log('[HotOrNot] Using object_filter from saved filter');
+        return parsedFilter.object_filter;
+      }
+      
+      // Convert criteria array to GraphQL filter format
+      if (parsedFilter && parsedFilter.criteria && Array.isArray(parsedFilter.criteria) && parsedFilter.criteria.length > 0) {
+        console.log('[HotOrNot] Converting criteria array to filter...');
+        const convertedFilter = convertCriteriaToFilter(parsedFilter.criteria);
+        
+        if (Object.keys(convertedFilter).length > 0) {
+          console.log('[HotOrNot] Successfully converted filter:', convertedFilter);
+          return convertedFilter;
+        } else {
+          console.warn('[HotOrNot] Criteria conversion resulted in empty filter, using defaults');
         }
       }
     } catch (e) {
-      console.warn('[HotOrNot] Failed to read performer filter from localStorage:', e.message || e);
+      console.error('[HotOrNot] Failed to read performer filter from localStorage:', e);
     }
     
-    // Fallback: Use default behavior (exclude males and performers without images)
-    // This preserves the original behavior when no custom filter is active
-    filter.gender = {
-      value: "MALE",
-      modifier: "EXCLUDES"
-    };
-    filter.NOT = {
-      is_missing: "image"
-    };
+    // Fallback to default filter
+    return getDefaultFilter();
+  }
+  
+  /**
+   * Convert Stash's criteria array to GraphQL PerformerFilterType format.
+   * Each criterion in the array has a type and value that needs to be converted.
+   * 
+   * @param {Array} criteria - Array of Criterion objects from Stash
+   * @returns {Object} Converted filter object
+   */
+  function convertCriteriaToFilter(criteria) {
+    const filter = {};
+    
+    criteria.forEach((criterion) => {
+      if (!criterion || !criterion.type) {
+        return;
+      }
+      
+      try {
+        // Each criterion type may have a different structure
+        // Common pattern: criterion has a 'value' property that contains the filter data
+        if (criterion.value !== undefined && criterion.value !== null) {
+          filter[criterion.type] = criterion.value;
+        }
+      } catch (err) {
+        console.warn(`[HotOrNot] Failed to convert criterion type "${criterion.type}":`, err);
+      }
+    });
+    
     return filter;
+  }
+  
+  /**
+   * Get the default performer filter (exclude males and performers without images).
+   * This is used when no custom filter is active.
+   * 
+   * @returns {Object} Default PerformerFilterType object
+   */
+  function getDefaultFilter() {
+    console.log('[HotOrNot] Using default filter (exclude males and performers without images)');
+    return {
+      gender: {
+        value: "MALE",
+        modifier: "EXCLUDES"
+      },
+      NOT: {
+        is_missing: "image"
+      }
+    };
   }
 
   async function fetchRandomPerformers(count = 2) {
