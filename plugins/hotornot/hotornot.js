@@ -1104,7 +1104,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Ethnicity filter
-    if (performerFilters.ethnicity.enabled && performerFilters.ethnicity.value) {
+    if (performerFilters.ethnicity.enabled && performerFilters.ethnicity.value && performerFilters.ethnicity.value.trim() !== "") {
       filter.ethnicity = {
         value: performerFilters.ethnicity.value,
         modifier: performerFilters.ethnicity.modifier
@@ -1112,7 +1112,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Country filter
-    if (performerFilters.country.enabled && performerFilters.country.value) {
+    if (performerFilters.country.enabled && performerFilters.country.value && performerFilters.country.value.trim() !== "") {
       filter.country = {
         value: performerFilters.country.value,
         modifier: performerFilters.country.modifier
@@ -1129,7 +1129,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Eye color filter
-    if (performerFilters.eyeColor.enabled && performerFilters.eyeColor.value) {
+    if (performerFilters.eyeColor.enabled && performerFilters.eyeColor.value && performerFilters.eyeColor.value.trim() !== "") {
       filter.eye_color = {
         value: performerFilters.eyeColor.value,
         modifier: performerFilters.eyeColor.modifier
@@ -1137,7 +1137,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Hair color filter
-    if (performerFilters.hairColor.enabled && performerFilters.hairColor.value) {
+    if (performerFilters.hairColor.enabled && performerFilters.hairColor.value && performerFilters.hairColor.value.trim() !== "") {
       filter.hair_color = {
         value: performerFilters.hairColor.value,
         modifier: performerFilters.hairColor.modifier
