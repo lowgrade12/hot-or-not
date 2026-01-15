@@ -14,13 +14,10 @@ A head-to-head comparison plugin that helps you rank performers and images.
 - **Swiss Mode for Images:**
   - Images use Swiss mode exclusively for optimal performance with large libraries (177,000+ images tested).
   - Intelligent sampling ensures fast comparisons even with massive image collections.
-- **Active Filter Support:**
+- **Active Filter Support (NEW!):**
   - Automatically respects active filters on the Performers/Images page
-  - Apply filters (date, rating, tags, country, gender, etc.) and HotOrNot will only select matching items
+  - Apply filters (date, rating, tags, etc.) and HotOrNot will only select matching items
   - Visual indicator shows when filters are active
-  - **NEW: Gender filter support** - Can now filter by gender (MALE, FEMALE, etc.)
-  - **NEW: BETWEEN modifier** - Filter by rating range (e.g., rating between 20-30)
-  - **FIXED: Country filter** - Now works correctly with all value formats
   - See [ACTIVE_FILTER_IMPLEMENTATION.md](ACTIVE_FILTER_IMPLEMENTATION.md) for details
 
 ## Overview
