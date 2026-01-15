@@ -1150,6 +1150,8 @@ async function fetchSceneCount() {
             modifier: criteria.modifier || 'EQUALS'
           };
           console.log('[HotOrNot] Applied rating100 filter:', filter.rating100);
+        } else {
+          console.warn('[HotOrNot] Invalid rating value (must be 0-100):', ratingValue);
         }
       }
       
@@ -1200,8 +1202,11 @@ async function fetchSceneCount() {
         console.log('[HotOrNot] Applied country filter:', filter.country);
       }
       
+      // List of supported filter types for validation
+      const supportedTypes = ['created_at', 'rating100', 'birthdate', 'tags', 'studios', 'ethnicity', 'country'];
+      
       // Log if filter type was not recognized
-      if (Object.keys(filter).length === 0) {
+      if (!supportedTypes.includes(criteria.type)) {
         console.log('[HotOrNot] Unsupported filter type:', criteria.type);
       }
       
