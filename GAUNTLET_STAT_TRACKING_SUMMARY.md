@@ -1,17 +1,24 @@
 # Gauntlet Match Stat Tracking - Implementation Summary
 
-## Problem Statement
+## Problem Statement (Original)
 "With the recent stat tracking, gauntlet matches are reporting only one result. Is this correct? What is the best way gauntlet style matches should be reporting results?"
+
+## Follow-up Issue (This Fix)
+"it is still counting gauntlet as one overall match. shouldn't each match count in their record when stats are recorded?"
 
 ## Analysis
 The original implementation was intentionally designed to track stats only for the "active participant" in gauntlet/champion modes:
 - Active participant = the champion climbing the ladder or the falling performer finding their floor
 - Defenders = benchmarks used to establish rank position
 
-**Problem:** This meant defenders who participated in matches had NO stats tracked, even though they were involved in the match. This led to:
+**Original Problem:** Defenders who participated in matches had NO stats tracked, even though they were involved in the match. This led to:
 1. Inaccurate match counts for K-factor calculations
 2. Asymmetric data (two performers battle, only one gets recorded)
 3. Missing participation history for defenders
+
+**Follow-up Problem (FIXED IN THIS PR):** The falling phase (after champion loses and finds their floor) was bypassing the normal stats tracking logic:
+1. When falling performer won (found floor): Only falling performer's stats were tracked, defender's stats were missing
+2. When falling performer lost again: NO stats were tracked for either participant
 
 ## Solution Implemented
 **Track participation for BOTH performers**, but preserve the gauntlet concept:
@@ -32,6 +39,13 @@ The `updatePerformerStats` function now accepts three values for the `won` param
 - `false` = performer lost (increment losses, update streaks)
 - `null` = participation only (increment match count, update timestamp, don't touch wins/losses/streaks)
 
+### Gauntlet Falling Phase Fix (New):
+The falling phase now properly tracks both participants:
+- **Falling performer wins (finds floor)**: Winner gets full win stats, loser gets participation-only
+- **Falling performer loses again**: Loser gets full loss stats, winner gets participation-only
+
+This ensures that **every match in a gauntlet run counts in both participants' records**.
+
 ## Benefits
 
 ### 1. Accurate K-Factor Calculations ✅
@@ -51,17 +65,37 @@ Can now track:
 
 ## Example Scenario
 
-### Before (old behavior):
-**Gauntlet Match:** Champion (Alice) vs Defender (Bob, rank #5)
-- Alice wins
-- Alice stats: `total_matches: 15 → 16`, `wins: 10 → 11`, `current_streak: 2 → 3`
-- Bob stats: NO CHANGE (not tracked at all)
-
-### After (new behavior):
-**Gauntlet Match:** Champion (Alice) vs Defender (Bob, rank #5)
+### Before (old behavior - with falling phase bug):
+**Gauntlet Match (Climbing):** Champion (Alice) vs Defender (Bob, rank #5)
 - Alice wins
 - Alice stats: `total_matches: 15 → 16`, `wins: 10 → 11`, `current_streak: 2 → 3`, `last_match: updated`
 - Bob stats: `total_matches: 8 → 9`, `last_match: updated`, wins/losses/streaks unchanged
+
+**Gauntlet Match (Falling - Alice loses):** Falling (Alice) vs Defender (Carol, rank #7)
+- Alice loses again (keeps falling)
+- Alice stats: NO CHANGE ❌
+- Carol stats: NO CHANGE ❌
+
+**Gauntlet Match (Falling - Alice wins):** Falling (Alice) vs Defender (Dave, rank #9)
+- Alice wins (found floor!)
+- Alice stats: `total_matches: 15 → 16`, `wins: 10 → 11` ✅
+- Dave stats: NO CHANGE ❌
+
+### After (new behavior - falling phase fixed):
+**Gauntlet Match (Climbing):** Champion (Alice) vs Defender (Bob, rank #5)
+- Alice wins
+- Alice stats: `total_matches: 15 → 16`, `wins: 10 → 11`, `current_streak: 2 → 3`, `last_match: updated`
+- Bob stats: `total_matches: 8 → 9`, `last_match: updated`, wins/losses/streaks unchanged
+
+**Gauntlet Match (Falling - Alice loses):** Falling (Alice) vs Defender (Carol, rank #7)
+- Alice loses again (keeps falling)
+- Alice stats: `total_matches: 16 → 17`, `losses: 4 → 5`, `current_streak: -1 → -2`, `last_match: updated` ✅
+- Carol stats: `total_matches: 12 → 13`, `last_match: updated`, wins/losses/streaks unchanged ✅
+
+**Gauntlet Match (Falling - Alice wins):** Falling (Alice) vs Defender (Dave, rank #9)
+- Alice wins (found floor!)
+- Alice stats: `total_matches: 17 → 18`, `wins: 11 → 12`, `current_streak: -2 → 1`, `last_match: updated` ✅
+- Dave stats: `total_matches: 5 → 6`, `last_match: updated`, wins/losses/streaks unchanged ✅
 
 ## Technical Changes
 
@@ -78,6 +112,11 @@ Can now track:
    - Always tracks participation for both performers in gauntlet/champion mode
    - Active participants get full stats (won=true/false)
    - Defenders get participation-only (won=null)
+
+4. **Gauntlet falling phase (NEW FIX)**
+   - When falling performer wins (finds floor): Track both winner and loser
+   - When falling performer loses again: Track both loser and winner
+   - Previously these cases were missing stats tracking for one or both participants
 
 ### Documentation Updated:
 - `README.md` - Added mode-specific stat tracking explanation
