@@ -15,6 +15,11 @@
   let disableChoice = false; // Track when inputs should be disabled to prevent multiple events
   let battleType = "performers"; // HotOrNot is performers-only
 
+  // Filter constants
+  // Protected filter keys that should never be overwritten by page filters
+  // These are critical defaults that ensure the plugin works correctly
+  const PROTECTED_FILTER_KEYS = new Set(['gender', 'NOT']);
+
   // ============================================
   // GRAPHQL QUERIES
   // ============================================
@@ -1043,7 +1048,15 @@ async function fetchSceneCount() {
   function readFiltersFromDOM() {
     try {
       // Look for filter chips in the Stash UI
-      const filterChips = document.querySelectorAll('.filter-item-list .btn-secondary, .filter-item-list button');
+      // Using more specific selector to avoid matching unintended elements
+      const filterContainer = document.querySelector('.filter-item-list');
+      if (!filterContainer) {
+        console.log('[HotOrNot] No filter container found in DOM');
+        return [];
+      }
+      
+      // Get buttons within the filter container
+      const filterChips = filterContainer.querySelectorAll('button.btn-secondary');
       
       if (filterChips.length === 0) {
         console.log('[HotOrNot] No filter chips found in DOM');
@@ -1127,8 +1140,9 @@ async function fetchSceneCount() {
       }
       
       // Handle rating filter (numeric comparison)
+      // Note: Use parseFloat to support decimal ratings (e.g., 87.5)
       if (criteria.type === 'rating100' && criteria.value?.value !== undefined) {
-        const ratingValue = parseInt(criteria.value.value, 10);
+        const ratingValue = parseFloat(criteria.value.value);
         if (!isNaN(ratingValue)) {
           filter.rating100 = {
             value: ratingValue,
@@ -1229,8 +1243,8 @@ async function fetchPerformerCount(performerFilter = {}) {
           // This preserves our critical defaults (exclude males, exclude without images)
           // while adding any additional page filters
           Object.keys(pageFilters).forEach(key => {
-            // Don't overwrite critical default filters
-            if (key !== 'gender' && key !== 'NOT') {
+            // Don't overwrite protected filter keys (gender, NOT)
+            if (!PROTECTED_FILTER_KEYS.has(key)) {
               filter[key] = pageFilters[key];
             }
           });
