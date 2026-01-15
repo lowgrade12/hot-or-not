@@ -14,6 +14,12 @@
   let totalItemsCount = 0; // Total items for position display
   let disableChoice = false; // Track when inputs should be disabled to prevent multiple events
   let battleType = "performers"; // HotOrNot is performers-only
+  let cachedUrlFilter = null; // Cache the URL filter when modal is opened
+
+  // GraphQL filter modifier constants
+  // Array-based modifiers require value_list field for enum-based criterion inputs
+  // (e.g., GenderCriterionInput). Non-enum filters like StringCriterionInput use 'value' field.
+  const ARRAY_BASED_MODIFIERS = new Set(['INCLUDES', 'EXCLUDES', 'INCLUDES_ALL']);
 
   // ============================================
   // GRAPHQL QUERIES
@@ -80,6 +86,630 @@
       image
     }
   `;
+
+  // ============================================
+  // URL FILTER PARSING
+  // ============================================
+
+  /**
+   * Parse filter criteria from URL query parameters
+   * Stash encodes filter criteria in the 'c' parameter as JSON
+   * @returns {Array} Array of filter criteria objects
+   */
+  function parseUrlFilterCriteria() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      // Use getAll() to support multiple filter criteria (multiple c= parameters)
+      const criteriaParams = urlParams.getAll('c');
+      
+      if (!criteriaParams || criteriaParams.length === 0) {
+        console.log('[HotOrNot] No filter criteria found in URL (no "c" parameter)');
+        return [];
+      }
+      
+      console.log(`[HotOrNot] Found ${criteriaParams.length} filter parameter(s) in URL:`, criteriaParams);
+      
+      const allParsedCriteria = [];
+      
+      // Parse each criterion parameter separately
+      for (const criteriaParam of criteriaParams) {
+        // The 'c' parameter contains encoded JSON criteria
+        // Try to decode and parse it
+        const decoded = decodeURIComponent(criteriaParam);
+        console.log('[HotOrNot] Decoded filter criteria:', decoded);
+        
+        // Stash uses a custom encoding format for criteria
+        // It can be a JSON array or individual criteria strings
+        // Try parsing as JSON first
+        try {
+          const criteria = JSON.parse(decoded);
+          const result = Array.isArray(criteria) ? criteria : [criteria];
+          console.log('[HotOrNot] Parsed criteria as JSON:', result);
+          allParsedCriteria.push(...result);
+        } catch (e) {
+          // If not valid JSON, it might be the newer Stash encoding
+          // Try parsing as a single criterion object string
+          // Format: {"type":"tags","value":{"items":["id1","id2"],"depth":0},"modifier":"INCLUDES"}
+          
+          // Multiple criteria are separated - split by },{ or ),( pattern (without lookbehind for compatibility)
+          // Stash may use parentheses instead of curly braces in some encoding formats
+          // Replace },{ or ),( with a unique delimiter, then split
+          const delimiter = '|||SPLIT|||';
+          // Handle both curly braces and parentheses as delimiters between criteria
+          let withDelimiter = decoded.replace(/\}\s*,?\s*\{/g, '}' + delimiter + '{');
+          withDelimiter = withDelimiter.replace(/\)\s*,?\s*\(/g, ')' + delimiter + '(');
+          const criteriaStrings = withDelimiter.split(delimiter);
+          
+          for (const criteriaStr of criteriaStrings) {
+            try {
+              // Stash may encode criteria with parentheses instead of curly braces
+              // Convert ALL parentheses to curly braces for JSON parsing (including nested ones)
+              // NOTE: This is safe because we only reach this code if standard JSON.parse failed
+              // at line 125, meaning the input is not valid JSON. If it had properly quoted
+              // strings with parentheses, it would have parsed successfully in the first attempt.
+              let normalized = criteriaStr.trim();
+              // Replace all opening parentheses with curly braces
+              normalized = normalized.replace(/\(/g, '{');
+              // Replace all closing parentheses with curly braces
+              normalized = normalized.replace(/\)/g, '}');
+              const criterion = JSON.parse(normalized);
+              if (criterion && criterion.type) {
+                allParsedCriteria.push(criterion);
+              }
+            } catch (parseErr) {
+              console.warn('[HotOrNot] Could not parse criterion:', criteriaStr, parseErr);
+            }
+          }
+        }
+      }
+      
+      console.log('[HotOrNot] Total parsed criteria:', allParsedCriteria);
+      return allParsedCriteria;
+    } catch (e) {
+      console.warn('[HotOrNot] Error parsing URL filter criteria:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Extract a simple value from a potentially nested criterion value object.
+   * Stash URL criteria can have values in different formats:
+   * - Simple: "FEMALE" or 50
+   * - Nested: { "value": "FEMALE" } or { "value": 50, "value2": 100 }
+   * @param {*} value - Value to extract from
+   * @returns {*} The extracted simple value, or the original if already simple
+   */
+  function extractSimpleValue(value) {
+    if (value === undefined || value === null) {
+      return value;
+    }
+    // If it's an object with a "value" property, extract it
+    // Note: We use !== undefined rather than hasOwnProperty because:
+    // - If value.value is null, we want to return null (filter should not apply)
+    // - If value.value is undefined, the property doesn't exist, so return original
+    if (typeof value === 'object' && !Array.isArray(value) && value.value !== undefined) {
+      return value.value;
+    }
+    // If it's an array, return it as-is (for multi-value filters)
+    if (Array.isArray(value)) {
+      return value;
+    }
+    // Otherwise return the value as-is
+    return value;
+  }
+
+  /**
+   * Safely parse an integer value, returning a default if parsing fails
+   * Handles nested value objects from URL criteria (e.g., { "value": 50 })
+   * @param {*} value - Value to parse
+   * @param {number} defaultValue - Default value if parsing fails (default: 0)
+   * @returns {number} Parsed integer or default value
+   */
+  function safeParseInt(value, defaultValue = 0) {
+    if (value === undefined || value === null) {
+      return defaultValue;
+    }
+    // Extract from nested object if needed
+    const simpleValue = extractSimpleValue(value);
+    if (simpleValue === undefined || simpleValue === null) {
+      return defaultValue;
+    }
+    const parsed = parseInt(simpleValue, 10);
+    return isNaN(parsed) ? defaultValue : parsed;
+  }
+
+  /**
+   * Normalize gender value to valid GraphQL GenderEnum format.
+   * Converts human-readable formats (e.g., "Transgender Female", "transgender female")
+   * to GraphQL enum format (e.g., "TRANSGENDER_FEMALE").
+   * Valid GenderEnum values: MALE, FEMALE, TRANSGENDER_MALE, TRANSGENDER_FEMALE, INTERSEX, NON_BINARY
+   * @param {string} value - Gender value to normalize
+   * @returns {string} Normalized gender value in GraphQL enum format
+   */
+  function normalizeGenderValue(value) {
+    if (!value || typeof value !== 'string') {
+      return value;
+    }
+    
+    // Convert to uppercase and replace spaces with underscores
+    const normalized = value.toUpperCase().replace(/\s+/g, '_');
+    
+    // Validate against known GenderEnum values
+    const validGenders = new Set([
+      'MALE',
+      'FEMALE',
+      'TRANSGENDER_MALE',
+      'TRANSGENDER_FEMALE',
+      'INTERSEX',
+      'NON_BINARY'
+    ]);
+    
+    if (validGenders.has(normalized)) {
+      return normalized;
+    }
+    
+    // If not valid, log a warning and return the original value
+    // This allows the GraphQL API to reject it with a clear error message
+    console.warn(`[HotOrNot] Invalid gender value "${value}" - valid values are: ${Array.from(validGenders).join(', ')}`);
+    return value;
+  }
+
+  /**
+   * Create a numeric filter object with support for value2 (BETWEEN modifier)
+   * @param {*} value - Value to parse (can be a number or an object with value and value2)
+   * @param {string} modifier - The filter modifier (e.g., 'BETWEEN', 'GREATER_THAN')
+   * @param {string} defaultModifier - Default modifier if none provided
+   * @returns {Object} Filter object with value, modifier, and optionally value2
+   */
+  function createNumericFilterObject(value, modifier, defaultModifier) {
+    const filterObj = {
+      value: safeParseInt(value, 0),
+      modifier: modifier || defaultModifier
+    };
+    // Handle BETWEEN modifier which requires value2
+    // value can be an object like { "value": 20, "value2": 30 }
+    if (typeof value === 'object' && !Array.isArray(value) && value.value2 !== undefined) {
+      filterObj.value2 = safeParseInt(value.value2, 0);
+    }
+    return filterObj;
+  }
+
+  /**
+   * Convert a single criterion from URL format to GraphQL PerformerFilterType format
+   * @param {Object} criterion - Single criterion object from URL
+   * @returns {Object|null} GraphQL filter object or null if not applicable
+   */
+  function convertCriterionToFilter(criterion) {
+    if (!criterion || !criterion.type) {
+      return null;
+    }
+
+    const { type, value, modifier } = criterion;
+    
+    // Map URL criterion types to GraphQL filter fields
+    // The filter structure varies based on the criterion type
+    switch (type) {
+      case 'tags':
+        // Tags filter: value contains items (tag IDs) and depth
+        if (value && value.items && value.items.length > 0) {
+          return {
+            tags: {
+              value: value.items,
+              modifier: modifier || 'INCLUDES',
+              depth: value.depth || 0
+            }
+          };
+        }
+        break;
+        
+      case 'studios':
+        // Studios filter
+        if (value && value.items && value.items.length > 0) {
+          return {
+            studios: {
+              value: value.items,
+              modifier: modifier || 'INCLUDES',
+              depth: value.depth || 0
+            }
+          };
+        }
+        break;
+        
+      case 'gender':
+        // Gender filter
+        // Extract simple value from potential nested object (e.g., { "value": "FEMALE" } -> "FEMALE")
+        if (value) {
+          const genderValue = extractSimpleValue(value);
+          if (genderValue) {
+            const effectiveModifier = modifier || 'EQUALS';
+            // Use value_list for array-based modifiers (INCLUDES, EXCLUDES, etc.)
+            // Use value for single-value modifiers (EQUALS, NOT_EQUALS)
+            const useValueList = ARRAY_BASED_MODIFIERS.has(effectiveModifier);
+            
+            if (useValueList) {
+              // Convert genderValue to array format for value_list field
+              const genderArray = Array.isArray(genderValue) ? genderValue : [genderValue];
+              // Normalize each gender value to valid GraphQL enum format
+              const normalizedArray = genderArray.map(g => normalizeGenderValue(g));
+              return {
+                gender: {
+                  value_list: normalizedArray,
+                  modifier: effectiveModifier
+                }
+              };
+            } else {
+              // Normalize single gender value to valid GraphQL enum format
+              const normalizedValue = normalizeGenderValue(genderValue);
+              return {
+                gender: {
+                  value: normalizedValue,
+                  modifier: effectiveModifier
+                }
+              };
+            }
+          }
+        }
+        break;
+        
+      case 'favorite':
+        // Favorite filter
+        if (value !== undefined && value !== null) {
+          const favValue = extractSimpleValue(value);
+          return {
+            filter_favorites: favValue === true || favValue === 'true'
+          };
+        }
+        break;
+        
+      case 'rating':
+      case 'rating100':
+        // Rating filter
+        if (value !== undefined && value !== null) {
+          return {
+            rating100: createNumericFilterObject(value, modifier, 'GREATER_THAN')
+          };
+        }
+        break;
+        
+      case 'age':
+        // Age filter
+        if (value !== undefined && value !== null) {
+          return {
+            age: createNumericFilterObject(value, modifier, 'EQUALS')
+          };
+        }
+        break;
+        
+      case 'ethnicity':
+        // Ethnicity filter
+        if (value) {
+          const ethnicityValue = extractSimpleValue(value);
+          if (ethnicityValue) {
+            return {
+              ethnicity: {
+                value: ethnicityValue,
+                modifier: modifier || 'EQUALS'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'country':
+        // Country filter
+        if (value) {
+          const countryValue = extractSimpleValue(value);
+          if (countryValue) {
+            return {
+              country: {
+                value: countryValue,
+                modifier: modifier || 'EQUALS'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'hair_color':
+        // Hair color filter
+        if (value) {
+          const hairColorValue = extractSimpleValue(value);
+          if (hairColorValue) {
+            return {
+              hair_color: {
+                value: hairColorValue,
+                modifier: modifier || 'EQUALS'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'eye_color':
+        // Eye color filter
+        if (value) {
+          const eyeColorValue = extractSimpleValue(value);
+          if (eyeColorValue) {
+            return {
+              eye_color: {
+                value: eyeColorValue,
+                modifier: modifier || 'EQUALS'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'scene_count':
+        // Scene count filter
+        if (value !== undefined && value !== null) {
+          return {
+            scene_count: createNumericFilterObject(value, modifier, 'GREATER_THAN')
+          };
+        }
+        break;
+        
+      case 'image_count':
+        // Image count filter
+        if (value !== undefined && value !== null) {
+          return {
+            image_count: createNumericFilterObject(value, modifier, 'GREATER_THAN')
+          };
+        }
+        break;
+        
+      case 'gallery_count':
+        // Gallery count filter
+        if (value !== undefined && value !== null) {
+          return {
+            gallery_count: createNumericFilterObject(value, modifier, 'GREATER_THAN')
+          };
+        }
+        break;
+        
+      case 'o_counter':
+        // O-counter filter
+        if (value !== undefined && value !== null) {
+          return {
+            o_counter: createNumericFilterObject(value, modifier, 'GREATER_THAN')
+          };
+        }
+        break;
+        
+      case 'stash_id':
+      case 'stash_id_endpoint':
+        // Stash ID filter - performer has a stash ID at a specific endpoint
+        // Note: This filter intentionally does NOT use extractSimpleValue() because
+        // the value itself is expected to be an object with stash_id and/or endpoint properties
+        // The structure depends on what's in the value object
+        if (value && typeof value === 'object') {
+          const stashIdFilter = {};
+          if (value.stash_id) {
+            stashIdFilter.stash_id = value.stash_id;
+          }
+          if (value.endpoint) {
+            stashIdFilter.endpoint = value.endpoint;
+          }
+          if (Object.keys(stashIdFilter).length > 0) {
+            stashIdFilter.modifier = modifier || 'NOT_NULL';
+            return {
+              stash_id_endpoint: stashIdFilter
+            };
+          }
+        }
+        break;
+        
+      case 'is_missing':
+        // Is missing filter
+        if (value) {
+          const missingValue = extractSimpleValue(value);
+          if (missingValue) {
+            return {
+              is_missing: missingValue
+            };
+          }
+        }
+        break;
+        
+      case 'name':
+        // Name filter (text search)
+        if (value) {
+          const nameValue = extractSimpleValue(value);
+          if (nameValue) {
+            return {
+              name: {
+                value: nameValue,
+                modifier: modifier || 'INCLUDES'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'alias':
+      case 'aliases':
+        // Alias filter
+        if (value) {
+          const aliasValue = extractSimpleValue(value);
+          if (aliasValue) {
+            return {
+              aliases: {
+                value: aliasValue,
+                modifier: modifier || 'INCLUDES'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'details':
+        // Details/bio filter
+        if (value) {
+          const detailsValue = extractSimpleValue(value);
+          if (detailsValue) {
+            return {
+              details: {
+                value: detailsValue,
+                modifier: modifier || 'INCLUDES'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'career_length':
+        // Career length filter
+        if (value) {
+          const careerValue = extractSimpleValue(value);
+          if (careerValue) {
+            return {
+              career_length: {
+                value: careerValue,
+                modifier: modifier || 'INCLUDES'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'tattoos':
+        // Tattoos filter
+        if (value) {
+          const tattoosValue = extractSimpleValue(value);
+          if (tattoosValue) {
+            return {
+              tattoos: {
+                value: tattoosValue,
+                modifier: modifier || 'INCLUDES'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'piercings':
+        // Piercings filter
+        if (value) {
+          const piercingsValue = extractSimpleValue(value);
+          if (piercingsValue) {
+            return {
+              piercings: {
+                value: piercingsValue,
+                modifier: modifier || 'INCLUDES'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'url':
+        // URL filter
+        if (value) {
+          const urlValue = extractSimpleValue(value);
+          if (urlValue) {
+            return {
+              url: {
+                value: urlValue,
+                modifier: modifier || 'INCLUDES'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'birthdate':
+        // Birthdate filter
+        if (value) {
+          const birthdateValue = extractSimpleValue(value);
+          if (birthdateValue) {
+            return {
+              birthdate: {
+                value: birthdateValue,
+                modifier: modifier || 'EQUALS'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'death_date':
+        // Death date filter
+        if (value) {
+          const deathDateValue = extractSimpleValue(value);
+          if (deathDateValue) {
+            return {
+              death_date: {
+                value: deathDateValue,
+                modifier: modifier || 'EQUALS'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'created_at':
+        // Created at filter
+        if (value) {
+          const createdValue = extractSimpleValue(value);
+          if (createdValue) {
+            return {
+              created_at: {
+                value: createdValue,
+                modifier: modifier || 'GREATER_THAN'
+              }
+            };
+          }
+        }
+        break;
+        
+      case 'updated_at':
+        // Updated at filter
+        if (value) {
+          const updatedValue = extractSimpleValue(value);
+          if (updatedValue) {
+            return {
+              updated_at: {
+                value: updatedValue,
+                modifier: modifier || 'GREATER_THAN'
+              }
+            };
+          }
+        }
+        break;
+        
+      default:
+        console.log(`[HotOrNot] Unknown criterion type: ${type}`);
+        return null;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Parse URL filters and convert them to GraphQL PerformerFilterType format
+   * @returns {Object} GraphQL performer filter object
+   */
+  function getUrlPerformerFilter() {
+    const criteria = parseUrlFilterCriteria();
+    const filter = {};
+    
+    console.log('[HotOrNot] Converting', criteria.length, 'criteria to performer filter');
+    
+    for (const criterion of criteria) {
+      const filterPart = convertCriterionToFilter(criterion);
+      if (filterPart) {
+        console.log('[HotOrNot] Converted criterion:', criterion, 'to filter part:', filterPart);
+        // Merge the filter part into the main filter
+        // Handle nested AND/OR logic if needed
+        Object.assign(filter, filterPart);
+      } else {
+        console.log('[HotOrNot] Could not convert criterion:', criterion);
+      }
+    }
+    
+    console.log('[HotOrNot] Final performer filter:', filter);
+    return filter;
+  }
 
 async function fetchSceneCount() {
     const countQuery = `
@@ -993,16 +1623,25 @@ async function fetchPerformerCount(performerFilter = {}) {
   }
 
   function getPerformerFilter() {
-    const filter = {};
-    // Exclude male performers
-    filter.gender = {
-      value: "MALE",
-      modifier: "EXCLUDES"
-    };
-    // Exclude performers without images by filtering out those where image is missing
-    filter.NOT = {
-      is_missing: "image"
-    };
+    // Start with URL filters from the current page (cached when modal opens)
+    const urlFilter = cachedUrlFilter || {};
+    const filter = { ...urlFilter };
+    
+    // Apply default filters only if not overridden by URL filters
+    
+    // Exclude male performers (unless URL filter specifies a gender)
+    if (!filter.gender) {
+      filter.gender = {
+        value_list: ["MALE"],
+        modifier: "EXCLUDES"
+      };
+    }
+    
+    // Note: Removed the NOT filter for is_missing as it was causing GraphQL 400 errors
+    // The filter structure `NOT: { is_missing: "image" }` is invalid for the Stash GraphQL API
+    // TODO: Consider implementing client-side filtering to exclude performers without images,
+    // or investigate the correct GraphQL filter structure for this use case
+    
     return filter;
   }
 
@@ -1010,7 +1649,7 @@ async function fetchPerformerCount(performerFilter = {}) {
   const performerFilter = getPerformerFilter();
   const totalPerformers = await fetchPerformerCount(performerFilter);
   if (totalPerformers < 2) {
-    throw new Error("Not enough performers for comparison. You need at least 2 non-male performers with images.");
+    throw new Error("Not enough performers for comparison. You need at least 2 non-male performers.");
   }
 
   const performerQuery = `
@@ -2598,8 +3237,21 @@ function addFloatingButton() {
       battleType = "images";
       // For images, always use Swiss mode
       currentMode = "swiss";
+      // Images don't use URL filters
+      cachedUrlFilter = null;
     } else {
       battleType = "performers";
+      // Always refresh URL filters when modal opens to capture current state
+      // This ensures we get the latest filters from the URL, including any changes
+      // made since the last location event or page load
+      cachedUrlFilter = getUrlPerformerFilter();
+      
+      // Log cached filter for debugging
+      if (cachedUrlFilter && Object.keys(cachedUrlFilter).length > 0) {
+        console.log('[HotOrNot] Using URL filters for performers:', cachedUrlFilter);
+      } else {
+        console.log('[HotOrNot] No URL filters detected');
+      }
     }
     
     const existingModal = document.getElementById("hon-modal");
@@ -2753,6 +3405,33 @@ function addFloatingButton() {
       childList: true,
       subtree: true,
     });
+    
+    // Listen for location changes to update cached filters
+    // This ensures filters are always up-to-date when users navigate or change filters
+    if (typeof PluginApi !== 'undefined' && PluginApi.Event && PluginApi.Event.addEventListener) {
+      PluginApi.Event.addEventListener("stash:location", (e) => {
+        console.log("[HotOrNot] Page changed:", e.detail.data.location.pathname);
+        
+        // Update cached filter when on performers page
+        const path = e.detail.data.location.pathname;
+        if (path === '/performers' || path === '/performers/') {
+          // Parse current filters from URL
+          const newFilter = getUrlPerformerFilter();
+          
+          // Only update cache if modal is not currently open
+          // (if modal is open, it should continue using the filters it was opened with)
+          const modalOpen = document.getElementById("hon-modal") !== null;
+          if (!modalOpen) {
+            cachedUrlFilter = newFilter;
+            if (newFilter && Object.keys(newFilter).length > 0) {
+              console.log('[HotOrNot] Updated cached filters:', newFilter);
+            } else {
+              console.log('[HotOrNot] Cleared cached filters (no filters active)');
+            }
+          }
+        }
+      });
+    }
   }
 
   if (document.readyState === "loading") {

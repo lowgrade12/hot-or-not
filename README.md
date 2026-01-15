@@ -34,10 +34,25 @@ Optional Step: Change Rating System Type to "Decimal" (Settings → Interface �
 
 ### For Performers:
 1. Navigate to the **Performers** page in Stash
-2. Click the floating 🔥 button in the bottom-right corner
-3. Choose your preferred comparison mode
-4. Click on a performer (or use arrow keys) to pick the winner
-5. Watch your rankings evolve over time!
+2. **Optional:** Apply filters to narrow down performers (by tags, studios, favorites, etc.)
+3. Click the floating 🔥 button in the bottom-right corner
+4. Choose your preferred comparison mode
+5. Click on a performer (or use arrow keys) to pick the winner
+6. Watch your rankings evolve over time!
+
+**New Feature - Dynamic Filter Support:** The plugin now dynamically captures and respects your currently active filters! Using Stash's `PluginApi.Event` system, the plugin automatically detects when you navigate or change filters on the performers page. This means:
+- Filters are captured in real-time as you apply them
+- The plugin always uses your current filters when you open HotOrNot
+- You can filter performers by tags, studios, favorites, or any other criteria
+- Filter changes are logged to the console for debugging
+
+This allows you to:
+- Run battles within specific categories (e.g., only performers with a "Favorite" tag)
+- Compare performers from a specific studio
+- Focus on performers matching specific criteria
+- See exactly what filters are being applied via console logs
+
+See [FILTER_CAPTURE_SUMMARY.md](FILTER_CAPTURE_SUMMARY.md) and [TESTING_FILTERS.md](TESTING_FILTERS.md) for technical details and testing instructions.
 
 ### For Images:
 1. Navigate to the **Images** page in Stash
