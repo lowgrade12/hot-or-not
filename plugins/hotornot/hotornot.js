@@ -1105,27 +1105,78 @@ async function fetchSceneCount() {
     }
     
     // Add active filters from the page
-    // Note: This is a basic implementation. Stash's filter format can be complex.
-    // You may need to extend this based on specific filter types you want to support.
+    // Note: Stash's filter format can be complex with nested criteria
     const criteria = activeFilters.criteria;
     
-    // Example: Handle created_at filter
-    if (criteria.type === 'created_at') {
-      filter.created_at = {
-        value: criteria.value?.value,
-        modifier: criteria.modifier
-      };
+    // Handle different filter types
+    try {
+      // Handle created_at filter (timestamp comparison)
+      if (criteria.type === 'created_at' && criteria.value?.value) {
+        filter.created_at = {
+          value: criteria.value.value,
+          modifier: criteria.modifier || 'EQUALS'
+        };
+      }
+      
+      // Handle rating filter (numeric comparison)
+      if (criteria.type === 'rating100' && criteria.value?.value !== undefined) {
+        const ratingValue = parseInt(criteria.value.value, 10);
+        if (!isNaN(ratingValue)) {
+          filter.rating100 = {
+            value: ratingValue,
+            modifier: criteria.modifier || 'EQUALS'
+          };
+        }
+      }
+      
+      // Handle birthdate filter
+      if (criteria.type === 'birthdate' && criteria.value?.value) {
+        filter.birthdate = {
+          value: criteria.value.value,
+          modifier: criteria.modifier || 'EQUALS'
+        };
+      }
+      
+      // Handle tag filter (includes/excludes tags)
+      if (criteria.type === 'tags' && criteria.value) {
+        // Tags can be an array or single value
+        filter.tags = {
+          value: Array.isArray(criteria.value) ? criteria.value : [criteria.value],
+          modifier: criteria.modifier || 'INCLUDES_ALL',
+          depth: criteria.depth || 0
+        };
+      }
+      
+      // Handle studio filter
+      if (criteria.type === 'studios' && criteria.value) {
+        filter.studios = {
+          value: Array.isArray(criteria.value) ? criteria.value : [criteria.value],
+          modifier: criteria.modifier || 'INCLUDES'
+        };
+      }
+      
+      // Handle ethnicity filter
+      if (criteria.type === 'ethnicity' && criteria.value?.value) {
+        filter.ethnicity = {
+          value: criteria.value.value,
+          modifier: criteria.modifier || 'EQUALS'
+        };
+      }
+      
+      // Handle country filter
+      if (criteria.type === 'country' && criteria.value?.value) {
+        filter.country = {
+          value: criteria.value.value,
+          modifier: criteria.modifier || 'EQUALS'
+        };
+      }
+      
+      // Log successful filter conversion for debugging
+      console.log('[HotOrNot] Converted filter criteria:', criteria.type, '→', filter[criteria.type]);
+      
+    } catch (e) {
+      console.warn('[HotOrNot] Error converting filter criteria:', e);
     }
-    
-    // Example: Handle rating filter
-    if (criteria.type === 'rating') {
-      filter.rating100 = {
-        value: parseInt(criteria.value?.value, 10),
-        modifier: criteria.modifier
-      };
-    }
-    
-    // Note: Add more filter type conversions as needed based on your use cases
     
     return filter;
   }

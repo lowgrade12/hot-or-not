@@ -68,9 +68,22 @@ const filters = getActiveFilters();
 ### `convertToPerformerFilter(activeFilters)`
 Converts active page filters to GraphQL-compatible performer filter format.
 
-Currently supports:
-- `created_at` filters
-- `rating` filters
+**Currently supports:**
+- `created_at` filters - Date/timestamp comparisons
+- `rating100` filters - Numeric rating comparisons
+- `birthdate` filters - Birthdate comparisons
+- `tags` filters - Tag inclusion/exclusion
+- `studios` filters - Studio filtering
+- `ethnicity` filters - Ethnicity matching
+- `country` filters - Country matching
+
+**Filter modifiers supported:**
+- `EQUALS` - Exact match
+- `GREATER_THAN` - Greater than comparison
+- `LESS_THAN` - Less than comparison
+- `INCLUDES` - Contains/includes
+- `EXCLUDES` - Does not contain/excludes
+- `INCLUDES_ALL` - Includes all specified values
 
 Can be extended to support additional filter types as needed.
 
