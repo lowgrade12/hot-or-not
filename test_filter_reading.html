@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HotOrNot Filter Reading Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 {
+            color: #0d6efd;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #fff;
+        }
+        .result {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success {
+            border-left: 4px solid #28a745;
+        }
+        .error {
+            border-left: 4px solid #dc3545;
+        }
+        button {
+            background: #0d6efd;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0b5ed7;
+        }
+        code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #0d6efd;
+        }
+        .filter-item-list {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔥 HotOrNot Filter Reading Test</h1>
+    <p>This page demonstrates the filter reading functionality implemented for the HotOrNot plugin.</p>
+
+    <div class="test-section">
+        <h2>1. URL Parameter Parsing</h2>
+        <p>Test parsing of Stash's custom filter format from URL parameters.</p>
+        
+        <button onclick="testURLParsing()">Test URL Parsing</button>
+        <button onclick="testURLWithFilter()">Simulate Filter URL</button>
+        <div id="url-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. DOM Scraping</h2>
+        <p>Test reading filter chips from the DOM.</p>
+        
+        <button onclick="addFilterChips()">Add Test Filter Chips</button>
+        <button onclick="testDOMScraping()">Test DOM Scraping</button>
+        <button onclick="clearFilterChips()">Clear Filter Chips</button>
+        
+        <div class="filter-item-list" id="filter-chips"></div>
+        <div id="dom-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Combined Filter Reading</h2>
+        <p>Test the hybrid approach that combines URL and DOM methods.</p>
+        
+        <button onclick="testCombined()">Test Combined Approach</button>
+        <div id="combined-result" class="result"></div>
+    </div>
+
+    <script>
+        // Copy the filter reading functions from hotornot.js for testing
+
+        function parseStashFilterParam(paramValue) {
+            if (!paramValue) return null;
+            
+            try {
+                const decoded = decodeURIComponent(paramValue);
+                let jsonStr = decoded
+                    .replace(/\(/g, '{')
+                    .replace(/\)/g, '}');
+                const parsed = JSON.parse(jsonStr);
+                return parsed;
+            } catch (e) {
+                console.warn('[Test] Failed to parse filter parameter:', e);
+                return null;
+            }
+        }
+
+        function readFiltersFromURL() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const criteriaParam = params.get('c');
+                
+                if (!criteriaParam) {
+                    return null;
+                }
+                
+                return parseStashFilterParam(criteriaParam);
+            } catch (e) {
+                console.warn('[Test] Error reading filters from URL:', e);
+                return null;
+            }
+        }
+
+        function readFiltersFromDOM() {
+            try {
+                const filterChips = document.querySelectorAll('.filter-item-list .btn-secondary');
+                
+                if (filterChips.length === 0) {
+                    return [];
+                }
+                
+                return Array.from(filterChips)
+                    .map(chip => chip.textContent?.trim())
+                    .filter(text => text && text.length > 0);
+            } catch (e) {
+                console.warn('[Test] Error reading filters from DOM:', e);
+                return [];
+            }
+        }
+
+        function getActiveFilters() {
+            const urlFilters = readFiltersFromURL();
+            const domFilters = readFiltersFromDOM();
+            
+            return {
+                criteria: urlFilters,
+                descriptions: domFilters,
+                hasFilters: urlFilters !== null || domFilters.length > 0
+            };
+        }
+
+        // Test functions
+        function testURLParsing() {
+            const result = document.getElementById('url-result');
+            const testParam = '(%22type%22:%22created_at%22,%22modifier%22:%22GREATER_THAN%22,%22value%22:(%22value%22:%222026-01-12%2000:00%22))';
+            
+            const parsed = parseStashFilterParam(testParam);
+            
+            if (parsed) {
+                result.className = 'result success';
+                result.textContent = 'SUCCESS! Parsed filter:\n' + JSON.stringify(parsed, null, 2);
+            } else {
+                result.className = 'result error';
+                result.textContent = 'FAILED: Could not parse filter parameter';
+            }
+        }
+
+        function testURLWithFilter() {
+            const filterParam = encodeURIComponent('("type":"rating100","modifier":"GREATER_THAN","value":("value":"70"))');
+            const newUrl = window.location.pathname + '?c=' + filterParam;
+            window.history.pushState({}, '', newUrl);
+            
+            const result = document.getElementById('url-result');
+            const filters = readFiltersFromURL();
+            
+            if (filters) {
+                result.className = 'result success';
+                result.textContent = 'SUCCESS! Read from URL:\n' + JSON.stringify(filters, null, 2);
+            } else {
+                result.className = 'result error';
+                result.textContent = 'FAILED: No filters found in URL';
+            }
+        }
+
+        function addFilterChips() {
+            const container = document.getElementById('filter-chips');
+            container.innerHTML = `
+                <button class="btn-secondary">Created At is greater than 2026-01-12 00:00</button>
+                <button class="btn-secondary">Rating is greater than 70</button>
+                <button class="btn-secondary">Country is United States</button>
+            `;
+        }
+
+        function testDOMScraping() {
+            const result = document.getElementById('dom-result');
+            const filters = readFiltersFromDOM();
+            
+            if (filters.length > 0) {
+                result.className = 'result success';
+                result.textContent = 'SUCCESS! Found filters:\n' + JSON.stringify(filters, null, 2);
+            } else {
+                result.className = 'result error';
+                result.textContent = 'FAILED: No filter chips found (click "Add Test Filter Chips" first)';
+            }
+        }
+
+        function clearFilterChips() {
+            document.getElementById('filter-chips').innerHTML = '';
+            document.getElementById('dom-result').textContent = '';
+        }
+
+        function testCombined() {
+            const result = document.getElementById('combined-result');
+            const filters = getActiveFilters();
+            
+            result.className = 'result success';
+            result.textContent = 'Combined Filter Results:\n' + JSON.stringify(filters, null, 2) + 
+                '\n\nHas Filters: ' + filters.hasFilters;
+        }
+    </script>
+</body>
+</html>
