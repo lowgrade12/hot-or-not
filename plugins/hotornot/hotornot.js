@@ -1068,14 +1068,12 @@ async function fetchPerformerCount(performerFilter = {}) {
       const criteria = [];
       for (const encodedCriterion of criteriaParams) {
         try {
-          // Stash encodes criteria as JSON with ( ) instead of { }
-          // Decode it back to JSON format
-          // This replacement is safe because Stash consistently uses this encoding
-          // and doesn't allow ( ) in criterion JSON strings
+          // Stash encodes criteria as JSON with ( ) instead of { } for URL safety
+          // We need to convert back to standard JSON { } while respecting quoted strings
           let jsonString = decodeURIComponent(encodedCriterion);
           
           // Convert Stash's ( ) encoding back to standard JSON { }
-          // We only replace these at the structural level (not in quoted strings)
+          // Must handle quoted strings properly to avoid replacing () inside string values
           let depth = 0;
           let inString = false;
           let escape = false;
@@ -1140,13 +1138,20 @@ async function fetchPerformerCount(performerFilter = {}) {
    * Each criterion in the array has a type and value that needs to be converted.
    * 
    * NOTE: This is a simplified conversion that works for most common criterion types.
-   * Some criterion types may require special handling that isn't implemented here.
+   * Criterion types that are known to work with direct value mapping:
+   * - gender, age, rating, birthdate, country, ethnicity, height, weight, etc.
+   * - tags, studios, performers (relational filters)
+   * - is_missing, organized (boolean/modifier filters)
+   * 
+   * If a criterion type doesn't work correctly, check the Stash GraphQL schema for
+   * the expected PerformerFilterType format for that field.
    * 
    * @param {Array} criteria - Array of Criterion objects from Stash
    * @returns {Object} Converted filter object
    */
   function convertCriteriaToFilter(criteria) {
     const filter = {};
+    let unsupportedTypes = [];
     
     criteria.forEach((criterion) => {
       if (!criterion || !criterion.type) {
@@ -1154,10 +1159,6 @@ async function fetchPerformerCount(performerFilter = {}) {
       }
       
       try {
-        // Each criterion type may have a different structure
-        // For most types, the 'value' property contains the filter data in GraphQL-compatible format
-        // Some special cases to handle:
-        
         // Skip if no value
         if (criterion.value === undefined || criterion.value === null) {
           console.warn(`[HotOrNot] Criterion "${criterion.type}" has no value, skipping`);
@@ -1171,9 +1172,15 @@ async function fetchPerformerCount(performerFilter = {}) {
         
         console.log(`[HotOrNot] Converted criterion "${criterion.type}":`, criterion.value);
       } catch (err) {
-        console.warn(`[HotOrNot] Failed to convert criterion type "${criterion.type}":`, err);
+        console.error(`[HotOrNot] Failed to convert criterion type "${criterion.type}":`, err);
+        unsupportedTypes.push(criterion.type);
       }
     });
+    
+    if (unsupportedTypes.length > 0) {
+      console.warn(`[HotOrNot] Some criterion types failed to convert:`, unsupportedTypes);
+      console.warn('[HotOrNot] These filters will be ignored. Check the console for details.');
+    }
     
     return filter;
   }
