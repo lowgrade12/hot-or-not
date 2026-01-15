@@ -992,35 +992,225 @@ async function fetchPerformerCount(performerFilter = {}) {
     return countResult.findPerformers.count;
   }
 
+  /**
+   * Read the active performer filter from Stash.
+   * 
+   * STRATEGY:
+   * 1. Try to read from URL query parameters (most reliable, as Stash syncs filters to URL)
+   * 2. Fall back to localStorage if URL has no filter
+   * 3. Fall back to default filter if neither works
+   * 
+   * @returns {Object} PerformerFilterType object for GraphQL queries
+   */
   function getPerformerFilter() {
-    const filter = {};
+    // First, try to read from URL query params (Stash keeps them in sync)
+    const urlFilter = getFilterFromURL();
+    if (urlFilter && Object.keys(urlFilter).length > 0) {
+      console.log('[HotOrNot] Using filter from URL:', urlFilter);
+      return urlFilter;
+    }
     
-    // Try to read the active filter from the performers page
+    // Fall back to localStorage
     try {
       const savedFilter = localStorage.getItem('filter.performers');
-      if (savedFilter) {
-        const parsedFilter = JSON.parse(savedFilter);
-        // Use the criteria from the saved filter if it exists
-        // Note: When a filter is active, we use the user's exact filter criteria.
-        // This allows full customization - users can include/exclude any performers they want.
-        if (parsedFilter && parsedFilter.criteria) {
-          return parsedFilter.criteria;
+      if (!savedFilter) {
+        console.log('[HotOrNot] No saved filter found in localStorage');
+        return getDefaultFilter();
+      }
+      
+      const parsedFilter = JSON.parse(savedFilter);
+      console.log('[HotOrNot] Loaded filter from localStorage:', parsedFilter);
+      
+      // Check if this is a saved filter with a pre-converted object_filter
+      if (parsedFilter && parsedFilter.object_filter) {
+        console.log('[HotOrNot] Using object_filter from saved filter');
+        return parsedFilter.object_filter;
+      }
+      
+      // Convert criteria array to GraphQL filter format
+      if (parsedFilter && parsedFilter.criteria && Array.isArray(parsedFilter.criteria) && parsedFilter.criteria.length > 0) {
+        console.log('[HotOrNot] Converting criteria array to filter...');
+        const convertedFilter = convertCriteriaToFilter(parsedFilter.criteria);
+        
+        if (Object.keys(convertedFilter).length > 0) {
+          console.log('[HotOrNot] Successfully converted filter:', convertedFilter);
+          return convertedFilter;
+        } else {
+          console.warn('[HotOrNot] Criteria conversion resulted in empty filter, using defaults');
         }
       }
     } catch (e) {
-      console.warn('[HotOrNot] Failed to read performer filter from localStorage:', e.message || e);
+      console.error('[HotOrNot] Failed to read performer filter from localStorage:', e);
     }
     
-    // Fallback: Use default behavior (exclude males and performers without images)
-    // This preserves the original behavior when no custom filter is active
-    filter.gender = {
-      value: "MALE",
-      modifier: "EXCLUDES"
-    };
-    filter.NOT = {
-      is_missing: "image"
-    };
+    // Fallback to default filter
+    return getDefaultFilter();
+  }
+  
+  /**
+   * Extract filter from URL query parameters.
+   * Stash stores filter state in the URL using the 'c' parameter (criteria).
+   * Each 'c' param is a JSON-encoded criterion.
+   * 
+   * @returns {Object} Converted filter object or null
+   */
+  function getFilterFromURL() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const criteriaParams = params.getAll('c');
+      
+      if (criteriaParams.length === 0) {
+        return null;
+      }
+      
+      console.log('[HotOrNot] Found criteria in URL:', criteriaParams);
+      
+      const criteria = [];
+      for (const encodedCriterion of criteriaParams) {
+        try {
+          // Stash encodes criteria as JSON with ( ) instead of { } for URL safety
+          // We need to convert back to standard JSON { } while respecting quoted strings
+          let jsonString = decodeURIComponent(encodedCriterion);
+          
+          // Convert Stash's ( ) encoding back to standard JSON { }
+          // Must handle quoted strings properly to avoid replacing () inside string values
+          let inString = false;
+          let escape = false;
+          const chars = [];
+          
+          for (let i = 0; i < jsonString.length; i++) {
+            const char = jsonString[i];
+            
+            if (escape) {
+              chars.push(char);
+              escape = false;
+              continue;
+            }
+            
+            if (char === '\\') {
+              escape = true;
+              chars.push(char);
+              continue;
+            }
+            
+            if (char === '"') {
+              inString = !inString;
+              chars.push(char);
+              continue;
+            }
+            
+            if (!inString) {
+              if (char === '(') {
+                chars.push('{');
+              } else if (char === ')') {
+                chars.push('}');
+              } else {
+                chars.push(char);
+              }
+            } else {
+              chars.push(char);
+            }
+          }
+          
+          const decodedJson = chars.join('');
+          const criterion = JSON.parse(decodedJson);
+          criteria.push(criterion);
+        } catch (err) {
+          console.warn('[HotOrNot] Failed to parse criterion from URL:', encodedCriterion, err);
+        }
+      }
+      
+      if (criteria.length > 0) {
+        return convertCriteriaToFilter(criteria);
+      }
+    } catch (e) {
+      console.warn('[HotOrNot] Failed to read filter from URL:', e);
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Convert Stash's criteria array to GraphQL PerformerFilterType format.
+   * Each criterion in the array has a type and value that needs to be converted.
+   * 
+   * NOTE: This is a simplified conversion that works for most common criterion types.
+   * Criterion types that are known to work with direct value mapping:
+   * - gender, age, rating, birthdate, country, ethnicity, height, weight, etc.
+   * - tags, studios, performers (relational filters)
+   * - is_missing, organized (boolean/modifier filters)
+   * 
+   * If a criterion type doesn't work correctly, check the Stash GraphQL schema for
+   * the expected PerformerFilterType format for that field.
+   * 
+   * @param {Array} criteria - Array of Criterion objects from Stash
+   * @returns {Object} Converted filter object
+   */
+  function convertCriteriaToFilter(criteria) {
+    const filter = {};
+    let unsupportedTypes = [];
+    
+    criteria.forEach((criterion) => {
+      if (!criterion || !criterion.type) {
+        return;
+      }
+      
+      try {
+        // Skip if no value (also filters out null early, so type check below won't see null)
+        if (criterion.value === undefined || criterion.value === null) {
+          console.warn(`[HotOrNot] Criterion "${criterion.type}" has no value, skipping`);
+          return;
+        }
+        
+        // Basic validation: criterion values should be objects, strings, numbers, booleans, or arrays
+        // Note: Arrays are objects in JavaScript, so check Array.isArray first
+        // Note: null is already filtered out above, so typeof 'object' here means real objects
+        if (!Array.isArray(criterion.value) && 
+            typeof criterion.value !== 'object' && 
+            typeof criterion.value !== 'string' && 
+            typeof criterion.value !== 'number' && 
+            typeof criterion.value !== 'boolean') {
+          console.warn(`[HotOrNot] Criterion "${criterion.type}" has unexpected value type: ${typeof criterion.value}, skipping`);
+          return;
+        }
+        
+        // For most criteria, the value is already in the right format for GraphQL
+        // This works because Stash's criterion objects store their values in a format
+        // that's compatible with the GraphQL API
+        filter[criterion.type] = criterion.value;
+        
+        console.log(`[HotOrNot] Converted criterion "${criterion.type}":`, criterion.value);
+      } catch (err) {
+        console.error(`[HotOrNot] Failed to convert criterion type "${criterion.type}":`, err);
+        unsupportedTypes.push(criterion.type);
+      }
+    });
+    
+    if (unsupportedTypes.length > 0) {
+      console.warn(`[HotOrNot] Some criterion types failed to convert:`, unsupportedTypes);
+      console.warn('[HotOrNot] These filters will be ignored. Check the console for details.');
+    }
+    
     return filter;
+  }
+  
+  /**
+   * Get the default performer filter (exclude males and performers without images).
+   * This is used when no custom filter is active.
+   * 
+   * @returns {Object} Default PerformerFilterType object
+   */
+  function getDefaultFilter() {
+    console.log('[HotOrNot] Using default filter (exclude males and performers without images)');
+    return {
+      gender: {
+        value: "MALE",
+        modifier: "EXCLUDES"
+      },
+      NOT: {
+        is_missing: "image"
+      }
+    };
   }
 
   async function fetchRandomPerformers(count = 2) {
@@ -1054,7 +1244,12 @@ async function fetchPerformerCount(performerFilter = {}) {
     throw new Error("Not enough performers for comparison. You need at least 2 performers.");
   }
 
-  const shuffled = allPerformers.sort(() => Math.random() - 0.5);
+  // Fisher-Yates shuffle for proper randomization
+  const shuffled = [...allPerformers];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   return shuffled.slice(0, 2);
 }
 
@@ -1065,7 +1260,7 @@ async function fetchPerformerCount(performerFilter = {}) {
    */
   async function fetchPerformerById(performerId) {
     // Validate performerId is a valid non-empty string
-    if (!performerId?.trim?.()) {
+    if (!performerId || typeof performerId !== 'string' || !performerId.trim()) {
       return null;
     }
     
