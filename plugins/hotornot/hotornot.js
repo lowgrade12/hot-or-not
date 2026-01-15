@@ -1073,7 +1073,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     
     // Favorites filter
     if (performerFilters.favorites.enabled) {
-      filter.filter_favorites = performerFilters.favorites.onlyFavorites;
+      filter.filter_favorites = performerFilters.favorites.onlyFavorites ? "ONLY" : "NONE";
     }
     
     // Tags filter
