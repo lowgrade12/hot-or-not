@@ -869,21 +869,26 @@ async function fetchSceneCount() {
     const shouldTrackWinner = battleType === "performers" && isActiveParticipant(winnerId, winnerRank);
     const shouldTrackLoser = battleType === "performers" && isActiveParticipant(loserId, loserRank);
     
-    // Update items in Stash (only if changed)
+    // Update items in Stash
     // Pass win/loss status for stats tracking:
     // - true/false for active participants (track full stats)
     // - null for defenders in gauntlet/champion mode (track participation only)
-    if (winnerChange !== 0) {
+    
+    // Winner updates
+    if (winnerChange !== 0 || (battleType === "performers" && winnerObj && shouldTrackWinner)) {
+      // Update rating if changed, or always update stats if active participant
       updateItemRating(winnerId, newWinnerRating, shouldTrackWinner ? winnerObj : null, shouldTrackWinner ? true : null);
-    } else if (battleType === "performers" && winnerObj && !shouldTrackWinner && (currentMode === "gauntlet" || currentMode === "champion")) {
-      // Even if rating didn't change, track participation for defenders in gauntlet/champion
+    } else if (battleType === "performers" && winnerObj && (currentMode === "gauntlet" || currentMode === "champion")) {
+      // Defender in gauntlet/champion mode - track participation only
       updateItemRating(winnerId, newWinnerRating, winnerObj, null);
     }
     
-    if (loserChange !== 0) {
+    // Loser updates
+    if (loserChange !== 0 || (battleType === "performers" && loserObj && shouldTrackLoser)) {
+      // Update rating if changed, or always update stats if active participant
       updateItemRating(loserId, newLoserRating, shouldTrackLoser ? loserObj : null, shouldTrackLoser ? false : null);
-    } else if (battleType === "performers" && loserObj && !shouldTrackLoser && (currentMode === "gauntlet" || currentMode === "champion")) {
-      // Even if rating didn't change, track participation for defenders in gauntlet/champion
+    } else if (battleType === "performers" && loserObj && (currentMode === "gauntlet" || currentMode === "champion")) {
+      // Defender in gauntlet/champion mode - track participation only
       updateItemRating(loserId, newLoserRating, loserObj, null);
     }
     
