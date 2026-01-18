@@ -385,6 +385,7 @@
         break;
         
       case 'favorite':
+      case 'filter_favorites':
         // Favorite filter
         if (value !== undefined && value !== null) {
           const favValue = extractSimpleValue(value);
