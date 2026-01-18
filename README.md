@@ -17,7 +17,6 @@ A plugin for [Stash](https://stashapp.cc/) that uses an ELO-style rating system 
 **Performance Optimized:**
 - Performers: Full dataset for accurate ranking across all library sizes
 - Images: Intelligent sampling (500) for libraries >1000 images
-- Tested with 15,000+ performers and 177,000+ images
 
 ## Installation
 
@@ -72,15 +71,6 @@ Recently matched performers are less likely to reappear:
 
 - Stash v0.27 or later
 - At least 2 performers or images in your library
-
-## Technical Details
-
-For implementation details and design decisions, see:
-- [APPROACH2_IMPLEMENTATION.md](APPROACH2_IMPLEMENTATION.md)
-- [APPROACH2_SUMMARY.md](APPROACH2_SUMMARY.md)
-- [CUSTOM_FIELDS_RESEARCH.md](CUSTOM_FIELDS_RESEARCH.md)
-- [FILTER_CAPTURE_SUMMARY.md](FILTER_CAPTURE_SUMMARY.md)
-- [TESTING_FILTERS.md](TESTING_FILTERS.md)
 
 ## Credits
 
