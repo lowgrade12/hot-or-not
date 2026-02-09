@@ -1,0 +1,88 @@
+/* ============================================
+   TOP PERFORMER PLUGIN STYLES
+   ============================================ */
+
+/* Top Performer Display Container */
+.tp-top-performer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 6px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+/* Crown Icon */
+.tp-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Performer Name */
+.tp-name {
+  font-weight: bold;
+  color: #ffc107;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+/* Scene Count */
+.tp-count {
+  font-size: 0.8rem;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .tp-top-performer {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+
+  .tp-icon {
+    font-size: 0.9rem;
+  }
+
+  .tp-name {
+    max-width: 100px;
+  }
+
+  .tp-count {
+    font-size: 0.75rem;
+  }
+}
+
+/* Dark/Light Theme Compatibility */
+@media (prefers-color-scheme: light) {
+  .tp-top-performer {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    color: #333;
+  }
+
+  .tp-name {
+    color: #d4a200;
+  }
+
+  .tp-count {
+    color: #666;
+  }
+}
+
+/* Hover effect */
+.tp-top-performer:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+@media (prefers-color-scheme: light) {
+  .tp-top-performer:hover {
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+}
