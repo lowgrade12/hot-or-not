@@ -1,0 +1,38 @@
+name: Set Stashbox Favorites
+# requires: stashUserscriptLibrary7dJx1qP
+description: Set Stashbox favorite performers and studios according to stash favorites
+version: 0.8.0
+url: https://github.com/lowgrade12/hot-or-not/tree/main/plugins/setStashboxFavorites
+settings:
+  tagErrors:
+    displayName: Tag performers/studios with invalid stashids
+    type: BOOLEAN
+  tagName:
+    displayName: Invalid stashid tag name
+    type: STRING
+exec:
+  - python
+  - "{pluginDir}/setStashboxFavorites.py"
+interface: raw
+hooks:
+  - name: Sync performer favorite on update
+    description: Syncs performer favorite status to stashdb.org when a performer is updated
+    triggeredBy:
+      - Performer.Update.Post
+  - name: Sync studio favorite on update
+    description: Syncs studio favorite status to stashdb.org when a studio is updated
+    triggeredBy:
+      - Studio.Update.Post
+tasks:
+  - name: Set Stashbox Favorite Performers
+    description: Set Stashbox favorite performers according to stash favorites
+    defaultArgs:
+      name: favorite_performers_sync
+      endpoint: null
+      api_key: null
+  - name: Set Stashbox Favorite Studios
+    description: Set Stashbox favorite studios according to stash favorites
+    defaultArgs:
+      name: favorite_studios_sync
+      endpoint: null
+      api_key: null

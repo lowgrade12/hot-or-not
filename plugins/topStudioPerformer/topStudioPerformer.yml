@@ -1,0 +1,9 @@
+name: TopStudioPerformer
+description: Displays the performer with the highest number of appearances for a studio on the studio card
+version: 1.0.0
+url: https://github.com/lowgrade12/hot-or-not
+ui:
+  javascript:
+    - topStudioPerformer.js
+  css:
+    - topStudioPerformer.css

@@ -1,0 +1,28 @@
+name: Whisparr Update
+description: Add matched StashDB scene to Whisparr on update
+version: 0.7
+exec:
+  - python
+  - "{pluginDir}/whisparrUpdate.py"
+interface: raw
+
+hooks:
+  - name: Add on scene update
+    triggeredBy:
+      - Scene.Update.Post
+
+settings:
+  WHISPARR_URL:
+    displayName: Whisparr URL
+    type: STRING
+  WHISPARR_API_KEY:
+    displayName: Whisparr API Key
+    type: STRING
+  STASHDB_ENDPOINT_SUBSTR:
+    displayName: StashDB host match (e.g. stashdb.org)
+    description: Only change this if whisparr adds custom stashbox support
+    type: STRING
+  MONITORED:
+    displayName: Monitor after add
+    description: Mark the scene as monitored when synced
+    type: BOOLEAN

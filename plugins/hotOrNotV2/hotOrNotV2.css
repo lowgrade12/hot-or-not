@@ -1,0 +1,1392 @@
+/* ============================================
+   HOTORNOT PLUGIN STYLES
+   ============================================ */
+
+/* Container */
+.hon-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: inherit;
+}
+
+/* Header */
+.hon-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.hon-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.hon-subtitle {
+  font-size: 1.1rem;
+  color: #888;
+  margin-bottom: 20px;
+}
+
+/* Mode Toggle */
+.hon-mode-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.hon-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 20px;
+  min-width: 0;
+  flex: 1;
+  max-width: 150px;
+  border: 2px solid #444;
+  background: transparent;
+  color: #aaa;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.hon-mode-btn:hover {
+  border-color: #666;
+  color: #fff;
+}
+
+.hon-mode-btn.active {
+  background: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+}
+
+.hon-mode-desc {
+  font-size: 0.9rem;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+.hon-mode-icon {
+  font-size: 1.3rem;
+}
+
+.hon-mode-title {
+  font-size: 1rem;
+}
+
+/* Comparison Area - Fixed Height */
+.hon-comparison-area {
+  min-height: 400px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.hon-vs-container {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: stretch;
+  width: 100%;
+}
+
+/* Scene Card - Fixed Height */
+.hon-scene-card {
+  background: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 350px;
+}
+
+@media (max-width: 1200px) {
+  .hon-vs-container {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .hon-vs-divider {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0;
+  }
+  
+  .hon-scene-card {
+    min-height: auto;
+  }
+}
+
+/* VS Divider */
+.hon-vs-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hon-vs-text {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #dc3545;
+  text-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+}
+
+.hon-scene-card:hover {
+  border-color: #0d6efd;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(13, 110, 253, 0.2);
+}
+
+.hon-scene-card.hon-winner {
+  border-color: #28a745 !important;
+  box-shadow: 0 0 30px rgba(40, 167, 69, 0.5);
+}
+
+.hon-scene-card.hon-loser {
+  border-color: #dc3545 !important;
+  opacity: 0.7;
+}
+
+/* Ensure card has relative positioning for overlay */
+.hon-scene-card {
+  position: relative;
+}
+
+/* Rating Change Animation Overlay */
+.hon-rating-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  z-index: 100;
+  animation: fadeInOverlay 0.3s ease-out;
+  pointer-events: none;
+}
+
+.hon-rating-overlay.hon-rating-winner {
+  background: rgba(40, 167, 69, 0.75);
+}
+
+.hon-rating-overlay.hon-rating-loser {
+  background: rgba(220, 53, 69, 0.75);
+}
+
+.hon-rating-display {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.hon-rating-change {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 8px;
+  animation: bounceIn 0.4s ease-out 0.2s both;
+}
+
+.hon-rating-winner .hon-rating-change {
+  color: #d4ffd4;
+}
+
+.hon-rating-loser .hon-rating-change {
+  color: #ffd4d4;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Scene Image */
+.hon-scene-image-container {
+  position: relative;
+  width: 100%;
+  max-height: 70vh;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Performer images - adjust for better fit */
+.hon-performer-image-container {
+  position: relative;
+  width: 100%;
+  max-height: 60vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hon-image-bg, #1a1a1a);
+}
+
+.hon-scene-image {
+  max-width: 100%;
+  max-height: 70vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transition: opacity 0.3s ease;
+  background: #000;
+}
+
+.hon-performer-image {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  background: #1a1a1a;
+}
+
+.hon-scene-image.hon-no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  color: #555;
+  font-size: 1rem;
+}
+
+/* Hover Preview Video */
+.hon-hover-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+/* Only hide image on hover when video preview exists (requires modern browser with :has() support) */
+.hon-scene-card:has(.hon-hover-preview):hover .hon-hover-preview {
+  opacity: 1;
+}
+
+.hon-scene-card:has(.hon-hover-preview):hover .hon-scene-image:not(.hon-no-image) {
+  opacity: 0;
+}
+
+.hon-scene-duration {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  z-index: 5;
+}
+
+/* Streak badge for gauntlet champion */
+.hon-streak-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #ff6b35, #f7c531);
+  color: #000;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+}
+
+/* Rank overlay for images */
+.hon-image-rank-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+}
+
+.hon-image-rank-overlay .hon-image-rank {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  display: inline-block;
+}
+
+/* Click hint overlay */
+.hon-click-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #aaa;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.hon-scene-image-container:hover .hon-click-hint {
+  opacity: 1;
+}
+
+/* Scene Info */
+.hon-scene-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.hon-scene-body:hover {
+  background: rgba(13, 110, 253, 0.1);
+}
+
+.hon-scene-body:hover .hon-choose-btn {
+  background: #0a58ca;
+}
+
+.hon-scene-info {
+  padding: 15px;
+  flex: 1;
+}
+
+.hon-scene-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  line-height: 1.3;
+  color: #fff;
+}
+
+.hon-scene-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.hon-scene-title-row .hon-scene-title {
+  margin-bottom: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hon-scene-rank {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffc107;
+  white-space: nowrap;
+}
+
+.hon-scene-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.9rem;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+
+.hon-meta-item strong {
+  color: #888;
+}
+
+/* Scene Tags */
+.hon-tags-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.hon-tags-row strong {
+  margin-right: 4px;
+}
+
+.hon-tag {
+  background: #333;
+  color: #ccc;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+}
+
+.hon-none {
+  color: #666;
+  font-style: italic;
+}
+
+/* Choose Button */
+.hon-choose-btn {
+  width: 100%;
+  padding: 20px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  background: #0d6efd;
+  color: #fff;
+  text-align: center;
+}
+
+/* Actions */
+.hon-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.hon-actions .btn {
+  padding: 12px 30px;
+  font-size: 1rem;
+}
+
+.hon-keyboard-hint {
+  font-size: 0.85rem;
+  color: #666;
+  padding-top: 10px;
+}
+
+.hon-keyboard-hint span {
+  color: #888;
+  background: #2a2a2a;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+@media (max-width: 768px) {
+  .hon-keyboard-hint {
+    display: none;
+  }
+}
+
+/* Loading & Error */
+.hon-loading,
+.hon-error {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 1.2rem;
+  color: #888;
+  width: 100%;
+  min-height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hon-error {
+  color: #dc3545;
+}
+
+/* Button overrides for Stash theme compatibility */
+.hon-container .btn {
+  display: inline-block;
+  font-weight: 400;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  border: 1px solid transparent;
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  border-radius: 0.25rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.hon-container .btn-primary {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+}
+
+.hon-container .btn-primary:hover {
+  background-color: #0a58ca;
+  border-color: #0a58ca;
+}
+
+.hon-container .btn-secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: #fff;
+}
+
+.hon-container .btn-secondary:hover {
+  background-color: #5c636a;
+  border-color: #5c636a;
+}
+
+/* Modal Styles */
+#hon-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hon-modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.hon-modal-content {
+  position: relative;
+  width: 95%;
+  max-width: 1500px;
+  max-height: 95vh;
+  overflow: auto;
+  background: #121212;
+  border-radius: 12px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8);
+}
+
+@media (max-width: 1200px) {
+  .hon-modal-content {
+    overflow-y: auto;
+  }
+}
+
+#hon-floating-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  color: white;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
+  z-index: 9999;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+@media (max-width: 580px) {
+  #hon-floating-btn {
+    bottom: 60px;
+  }
+
+}
+
+.hon-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 1.8rem;
+  cursor: pointer;
+  z-index: 10;
+  transition: color 0.2s;
+}
+
+.hon-modal-close:hover {
+  color: #fff;
+}
+
+/* Scrollbar styling for modal */
+.hon-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.hon-modal-content::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.hon-modal-content::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+.hon-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Animation for new pair loading */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hon-vs-container {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Victory Screen */
+.hon-victory-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.hon-victory-crown {
+  font-size: 4rem;
+  animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.hon-victory-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffc107;
+  margin: 10px 0;
+  text-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+}
+
+.hon-victory-scene {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 4px solid #ffc107;
+  box-shadow: 0 0 40px rgba(255, 193, 7, 0.3);
+  margin: 15px 0;
+}
+
+.hon-victory-image {
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.hon-victory-name {
+  font-size: 1.3rem;
+  color: #fff;
+  margin: 8px 0;
+}
+
+.hon-victory-stats {
+  font-size: 1rem;
+  color: #888;
+  margin-bottom: 20px;
+}
+
+#hon-new-gauntlet {
+  padding: 12px 30px;
+  font-size: 1.1rem;
+}
+
+
+/* ===== Performer -> Scene compatibility shim (feat/performer-mode) =====
+   Makes the new .hon-performer-* elements look like the existing
+   .hon-scene-* rules without having to duplicate the whole stylesheet.
+   This is intentionally minimal and conservative. */
+.hon-performer-card,
+.hon-performer-image-container,
+.hon-performer-image,
+.hon-performer-duration,
+.hon-performer-body,
+.hon-performer-info,
+.hon-performer-title-row,
+.hon-performer-title,
+.hon-performer-meta,
+.hon-performer-rank,
+.hon-performer-image .hon-no-image {
+  /* Base defaults so missing scene rules don't break layout */
+  box-sizing: border-box;
+}
+
+/* Useful, lightweight visual defaults if the scene stylesheet doesn't cover an element */
+.hon-performer-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--hon-card-bg, #fff);
+  box-shadow: var(--hon-card-shadow, 0 2px 8px rgba(0,0,0,0.06));
+}
+
+.hon-performer-duration {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0,0,0,0.55);
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+.hon-performer-body {
+  padding: 12px;
+  display: block;
+}
+
+.hon-performer-title {
+  margin: 0 0 6px 0;
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--hon-title-color, #111);
+}
+
+.hon-performer-meta .hon-meta-item {
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: var(--hon-meta-color, #555);
+}
+
+.hon-performer-rank {
+  font-weight: 700;
+  color: var(--hon-rank-color, #333);
+  margin-left: 8px;
+}
+
+/* Streak & choose button */
+.hon-streak-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 8px; border-radius: 12px; font-size: 12px; }
+.hon-choose-btn { margin-top: 8px; padding: 8px 10px; background: var(--hon-btn-bg, #0d6efd); color: #fff; border-radius: 6px; text-align: center; cursor: pointer; }
+
+/* If JS already added paired hon-scene-* classes, let those rules take precedence.
+   Keeping empty grouped selectors below ensures future scene rules that use
+   multiple selectors (e.g. ".hon-scene-card .hon-scene-title") will also apply
+   when a performer class is present alongside the scene class. */
+.hon-performer-card.hon-scene-card,
+.hon-performer-image-container.hon-scene-image-container,
+.hon-performer-image.hon-scene-image,
+.hon-performer-duration.hon-scene-duration,
+.hon-performer-body.hon-scene-body,
+.hon-performer-info.hon-scene-info,
+.hon-performer-title-row.hon-scene-title-row,
+.hon-performer-title.hon-scene-title,
+.hon-performer-meta.hon-scene-meta,
+.hon-performer-rank.hon-scene-rank {}
+
+/* End shim */
+
+/* ============================================
+   PERFORMER SELECTION FOR GAUNTLET
+   ============================================ */
+
+.hon-performer-selection {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 12px;
+}
+
+.hon-selection-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.hon-performer-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.hon-selection-card {
+  background: #252525;
+  border: 2px solid #444;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.hon-selection-card:hover {
+  border-color: #0d6efd;
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+}
+
+.hon-selection-image-container {
+  width: 100%;
+  aspect-ratio: 2/3;
+  overflow: hidden;
+  background: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hon-selection-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hon-selection-image.hon-no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.hon-selection-info {
+  padding: 10px;
+  text-align: center;
+}
+
+.hon-selection-name {
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hon-selection-rating {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+@media (max-width: 768px) {
+  .hon-performer-list {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+  }
+  
+  .hon-selection-name {
+    font-size: 0.85rem;
+  }
+  
+  .hon-selection-rating {
+    font-size: 0.75rem;
+  }
+}
+/* ============================================
+   STATS MODAL & BUTTON
+   ============================================ */
+
+.hon-stats-button {
+  margin-top: 15px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+}
+
+.hon-stats-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hon-stats-modal-dialog {
+  position: relative;
+  background: #1a1a1a;
+  border-radius: 12px;
+  max-width: 95%;
+  max-height: 90vh;
+  width: 1200px;
+  overflow-y: auto;
+  padding: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.hon-stats-title {
+  font-size: 2rem;
+  color: #fff;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.hon-stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.hon-stats-summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.hon-stats-summary-label {
+  font-size: 0.9rem;
+  color: #888;
+  margin-bottom: 5px;
+}
+
+.hon-stats-summary-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #0d6efd;
+}
+
+.hon-stats-table-container {
+  overflow-x: auto;
+}
+
+.hon-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.hon-stats-table thead {
+  background: rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.hon-stats-table th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #fff;
+  border-bottom: 2px solid #444;
+}
+
+.hon-stats-table td {
+  padding: 10px 8px;
+  color: #ccc;
+  border-bottom: 1px solid #333;
+}
+
+.hon-stats-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hon-stats-rank {
+  font-weight: bold;
+  color: #ffc107;
+}
+
+.hon-stats-name a {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.hon-stats-name a:hover {
+  text-decoration: underline;
+}
+
+.hon-stats-rating {
+  font-weight: bold;
+  color: #28a745;
+}
+
+.hon-stats-positive {
+  color: #28a745;
+}
+
+.hon-stats-negative {
+  color: #dc3545;
+}
+
+.hon-stats-neutral {
+  color: #6c757d;
+}
+
+.hon-stats-loading,
+.hon-stats-empty,
+.hon-stats-error {
+  padding: 40px;
+  text-align: center;
+  color: #888;
+  font-size: 1.1rem;
+}
+
+.hon-stats-error {
+  color: #dc3545;
+}
+
+/* Stats Tabs */
+.hon-stats-tabs {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  border-bottom: 2px solid #444;
+}
+
+.hon-stats-tab {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #888;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.hon-stats-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hon-stats-tab.active {
+  color: #0d6efd;
+  border-bottom-color: #0d6efd;
+}
+
+.hon-stats-tab-content {
+  margin-top: 20px;
+}
+
+.hon-stats-tab-panel {
+  display: none;
+}
+
+.hon-stats-tab-panel.active {
+  display: block;
+}
+
+/* Bar Graph Styles */
+.hon-bar-graph {
+  padding: 20px;
+}
+
+/* Shared Group Toggle Styles */
+.hon-group-toggle {
+  font-size: 0.9rem;
+  color: #888;
+  min-width: 20px;
+}
+
+/* Bar Graph Group Styles */
+.hon-bar-group {
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.hon-bar-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.hon-bar-group-header:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hon-bar-group-label {
+  font-weight: 600;
+  color: #fff;
+  font-size: 0.95rem;
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.hon-bar-group-bar-wrapper {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  height: 28px;
+  position: relative;
+  overflow: hidden;
+  min-width: 100px;
+}
+
+.hon-bar-group-bar {
+  background: linear-gradient(90deg, #0d6efd 0%, #0a58ca 100%);
+  height: 100%;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  transition: width 0.3s ease;
+  min-width: 40px;
+}
+
+.hon-bar-group-bar-count {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Legacy styles for backward compatibility */
+.hon-bar-group-title {
+  font-weight: 600;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.hon-bar-group-count {
+  color: #888;
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+.hon-bar-group-content {
+  border-top: 1px solid #333;
+  padding: 16px;
+}
+
+.hon-bar-group-content.collapsed {
+  display: none;
+}
+
+/* Rank Group Styles */
+.hon-rank-groups {
+  margin-top: 10px;
+}
+
+.hon-rank-group {
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.hon-rank-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.hon-rank-group-header:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hon-rank-group-title {
+  font-weight: 600;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.hon-rank-group-count {
+  color: #888;
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+.hon-rank-group-content {
+  border-top: 1px solid #333;
+}
+
+.hon-rank-group-content.collapsed {
+  display: none;
+}
+
+.hon-rank-group-content .hon-stats-table {
+  margin: 0;
+}
+
+.hon-rank-group-content .hon-stats-table td {
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.hon-rank-group-content .hon-stats-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hon-stats-table-header {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 0;
+}
+
+.hon-stats-table-header thead {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hon-stats-table-header th {
+  border-bottom: 2px solid #444;
+}
+
+.hon-bar-graph-title {
+  font-size: 1.3rem;
+  color: #fff;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.hon-bar-graph-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hon-bar-container {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.hon-bar-label {
+  font-size: 0.95rem;
+  color: #aaa;
+  text-align: right;
+  font-weight: 500;
+}
+
+.hon-bar-wrapper {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  height: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hon-bar {
+  background: linear-gradient(90deg, #0d6efd 0%, #0a58ca 100%);
+  height: 100%;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  transition: width 0.3s ease;
+  min-width: 40px;
+}
+
+.hon-bar-count {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .hon-stats-modal-dialog {
+    max-width: 98%;
+    padding: 20px;
+  }
+  
+  .hon-stats-title {
+    font-size: 1.5rem;
+  }
+  
+  .hon-stats-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .hon-stats-table {
+    font-size: 0.85rem;
+  }
+  
+  .hon-stats-table th,
+  .hon-stats-table td {
+    padding: 8px 5px;
+  }
+
+  .hon-stats-tab {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  .hon-bar-container {
+    grid-template-columns: 50px 1fr;
+  }
+
+  .hon-bar-label {
+    font-size: 0.85rem;
+  }
+
+  .hon-bar {
+    height: 28px;
+  }
+
+  .hon-bar-count {
+    font-size: 0.85rem;
+  }
+
+  .hon-bar-group-label {
+    font-size: 0.85rem;
+    min-width: 60px;
+  }
+
+  .hon-bar-group-bar-wrapper {
+    height: 24px;
+    min-width: 80px;
+  }
+
+  .hon-bar-group-bar {
+    min-width: 30px;
+  }
+
+  .hon-bar-group-bar-count {
+    font-size: 0.8rem;
+  }
+}
