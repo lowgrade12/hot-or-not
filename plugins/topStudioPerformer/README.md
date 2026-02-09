@@ -1,5 +1,7 @@
 # TopPerformer Plugin
 
+> **Note**: This plugin is inspired by [studioTopPerformer](https://github.com/Serechops/Serechops-Stash/tree/main/plugins/studioTopPerformer).
+
 A plugin for [Stash](https://stashapp.cc/) that displays the performer with the highest number of appearances for each studio directly on studio cards.
 
 ## Features
@@ -97,3 +99,7 @@ This prevents showing the widget on studio cards that appear in scene-related co
 ## License
 
 See [LICENCE](../../LICENCE) for details.
+
+## Credits
+
+This plugin is inspired by [studioTopPerformer](https://github.com/Serechops/Serechops-Stash/tree/main/plugins/studioTopPerformer).

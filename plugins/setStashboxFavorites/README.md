@@ -1,6 +1,6 @@
 # Set Stashbox Favorites Plugin
 
-> **Note**: This plugin is inspired by [stashSetStashboxFavoritePerformers](https://github.com/lowgrade12/hotornottest/tree/main/plugins/stashSetStashboxFavoritePerformers).
+> **Note**: This plugin is inspired by [stashSetStashboxFavoritePerformers](https://github.com/7dJx1qP/stash-plugins/tree/main/plugins/stashSetStashboxFavoritePerformers).
 
 A plugin for [Stash](https://stashapp.cc/) that synchronizes your favorite performers and studios with StashDB (stashdb.org). When you mark a performer or studio as a favorite in Stash, it automatically updates their favorite status on StashDB.
 
@@ -105,6 +105,6 @@ See [LICENCE](../../LICENCE) for details.
 
 ## Credits
 
-This plugin is inspired by [stashSetStashboxFavoritePerformers](https://github.com/lowgrade12/hotornottest/tree/main/plugins/stashSetStashboxFavoritePerformers).
+This plugin is inspired by [stashSetStashboxFavoritePerformers](https://github.com/7dJx1qP/stash-plugins/tree/main/plugins/stashSetStashboxFavoritePerformers).
 
 Based on the [stash-plugins](https://github.com/7dJx1qP/stash-plugins) repository by 7dJx1qP.
