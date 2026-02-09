@@ -1,6 +1,6 @@
 # Whisparr Update Plugin
 
-> **Note**: This plugin is inspired by the [whisparr-bridge](https://github.com/lowgrade12/hotornottest/tree/main/plugins/whisparr-bridge) plugin.
+> **Note**: This plugin is inspired by the [whisparr-bridge](https://github.com/Eviepayne/whisparr-bridge/tree/master/plugins/whisparr-bridge) plugin.
 
 A plugin for [Stash](https://stashapp.cc/) that automatically adds scenes to [Whisparr](https://github.com/Whisparr/Whisparr) when they are matched with StashDB. This enables automated scene management and downloading through Whisparr's integration.
 
@@ -134,4 +134,4 @@ See [LICENCE](../../LICENCE) for details.
 
 ## Credits
 
-This plugin is inspired by the [whisparr-bridge](https://github.com/lowgrade12/hotornottest/tree/main/plugins/whisparr-bridge) plugin.
+This plugin is inspired by the [whisparr-bridge](https://github.com/Eviepayne/whisparr-bridge/tree/master/plugins/whisparr-bridge) plugin.
