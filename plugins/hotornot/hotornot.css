@@ -1428,3 +1428,71 @@
 
 /* Note: Rank tier color styles removed for better readability.
    Badge now uses consistent plain styling. Tier is still indicated by emoji. */
+
+/* ============================================
+   MATCH STATS IN BATTLE RANK BADGE
+   ============================================ */
+
+.hon-match-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 0.85em;
+}
+
+.hon-stats-record {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.hon-wins {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.hon-losses {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.hon-draws {
+  color: #a3a3a3;
+  font-weight: 600;
+}
+
+.hon-win-rate {
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.hon-streak-positive {
+  color: #4ade80;
+  font-weight: 700;
+  padding: 1px 6px;
+  background: rgba(74, 222, 128, 0.2);
+  border-radius: 10px;
+}
+
+.hon-streak-negative {
+  color: #f87171;
+  font-weight: 700;
+  padding: 1px 6px;
+  background: rgba(248, 113, 113, 0.2);
+  border-radius: 10px;
+}
+
+/* Note: Tier-specific match stats adjustments removed as badge now uses plain styling */
+
+/* Responsive adjustments for match stats */
+@media (max-width: 768px) {
+  .hon-match-stats {
+    display: none;
+  }
+  
+  .hon-battle-rank-badge {
+    flex-wrap: nowrap;
+  }
+}
