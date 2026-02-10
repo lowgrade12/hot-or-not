@@ -3541,6 +3541,7 @@ async function fetchPerformerCount(performerFilter = {}) {
             performers {
               id
               rating100
+              custom_fields
             }
           }
         }
@@ -3569,10 +3570,15 @@ async function fetchPerformerCount(performerFilter = {}) {
       }
 
       const performer = performers[index];
+      
+      // Parse match stats from custom_fields
+      const stats = parsePerformerEloData(performer);
+      
       return {
         rank: index + 1,
         total: total,
-        rating: performer.rating100 || 0
+        rating: performer.rating100 || 0,
+        stats: stats
       };
     } catch (error) {
       console.error("[HotOrNot] Error fetching performer battle rank:", error);
@@ -3581,13 +3587,14 @@ async function fetchPerformerCount(performerFilter = {}) {
   }
 
   /**
-   * Create the battle rank badge element
+   * Create the battle rank badge element with match stats
    * @param {number} rank - The performer's rank
    * @param {number} total - Total number of performers
    * @param {number} rating - The performer's rating100
+   * @param {Object} stats - Match statistics (wins, losses, draws, current_streak, etc.)
    * @returns {HTMLElement} The badge element
    */
-  function createBattleRankBadge(rank, total, rating) {
+  function createBattleRankBadge(rank, total, rating, stats = null) {
     const badge = document.createElement("div");
     badge.className = "hon-battle-rank-badge";
     badge.id = "hon-battle-rank-badge";
@@ -3615,12 +3622,63 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     badge.classList.add(tierClass);
+    
+    // Build match stats HTML if stats are available and performer has played matches
+    let matchStatsHTML = '';
+    let winRate = null;
+    const hasMatchStats = stats && stats.total_matches > 0;
+    
+    if (hasMatchStats) {
+      // Calculate win rate once for both display and tooltip
+      winRate = ((stats.wins / stats.total_matches) * 100).toFixed(1);
+      
+      // Format current streak with color indicator
+      let streakDisplay = '';
+      if (stats.current_streak > 0) {
+        streakDisplay = `<span class="hon-streak-positive">W${stats.current_streak}</span>`;
+      } else if (stats.current_streak < 0) {
+        streakDisplay = `<span class="hon-streak-negative">L${Math.abs(stats.current_streak)}</span>`;
+      }
+      
+      matchStatsHTML = `
+        <span class="hon-match-stats">
+          <span class="hon-stats-record">
+            <span class="hon-wins">${stats.wins}W</span>
+            <span class="hon-losses">${stats.losses}L</span>
+            <span class="hon-draws">${stats.draws}D</span>
+          </span>
+          <span class="hon-win-rate">${winRate}%</span>
+          ${streakDisplay}
+        </span>
+      `;
+    }
+    
     badge.innerHTML = `
       <span class="hon-rank-emoji">${tierEmoji}</span>
       <span class="hon-rank-text">Battle Rank #${rank}</span>
       <span class="hon-rank-total">of ${total}</span>
+      ${matchStatsHTML}
     `;
-    badge.title = `Battle Rank #${rank} of ${total} performers (Rating: ${rating}/100)`;
+    
+    // Build comprehensive tooltip
+    let tooltipText = `Battle Rank #${rank} of ${total} performers (Rating: ${rating}/100)`;
+    if (hasMatchStats) {
+      tooltipText += `\n\nMatch Stats:`;
+      tooltipText += `\n• Record: ${stats.wins}W - ${stats.losses}L - ${stats.draws}D`;
+      tooltipText += `\n• Win Rate: ${winRate}%`;
+      tooltipText += `\n• Total Matches: ${stats.total_matches}`;
+      if (stats.current_streak !== 0) {
+        const streakType = stats.current_streak > 0 ? 'Winning' : 'Losing';
+        tooltipText += `\n• Current Streak: ${streakType} ${Math.abs(stats.current_streak)}`;
+      }
+      if (stats.best_streak > 0) {
+        tooltipText += `\n• Best Streak: ${stats.best_streak}`;
+      }
+      if (stats.worst_streak < 0) {
+        tooltipText += `\n• Worst Streak: ${Math.abs(stats.worst_streak)}`;
+      }
+    }
+    badge.title = tooltipText;
     
     return badge;
   }
@@ -3664,8 +3722,8 @@ async function fetchPerformerCount(performerFilter = {}) {
         return;
       }
 
-      // Create the badge
-      const badge = createBattleRankBadge(rankInfo.rank, rankInfo.total, rankInfo.rating);
+      // Create the badge with stats
+      const badge = createBattleRankBadge(rankInfo.rank, rankInfo.total, rankInfo.rating, rankInfo.stats);
 
       // Find the best place to inject the badge
       // Try to find the rating stars container first (next to star rating)
