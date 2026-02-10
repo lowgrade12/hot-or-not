@@ -3720,7 +3720,8 @@ async function fetchPerformerCount(performerFilter = {}) {
       tierEmoji = "🔥";
     }
     
-    badge.classList.add(tierClass);
+    // Note: Tier-based color classes removed for better readability
+    // The tier emoji still indicates ranking percentile
     badge.innerHTML = `
       <span class="hon-rank-emoji">${tierEmoji}</span>
       <span class="hon-rank-text">Battle Rank #${rank}</span>
