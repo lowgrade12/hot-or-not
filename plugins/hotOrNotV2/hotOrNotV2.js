@@ -3314,8 +3314,13 @@ async function fetchPerformerCount(performerFilter = {}) {
           // Use ELO-based calculation for the rating loss instead of direct assignment
           // This ensures the performer doesn't drop too dramatically from a single loss
           const currentFallingRating = gauntletFallingItem.rating100 || 50;
+          // Pass null for performer objects to prevent handleComparison from tracking stats internally
+          // Stats are manually tracked at lines 3346 and 3352 below to properly handle the floor calculation
           const { newLoserRating, loserChange } = await handleComparison(
-            winnerId, gauntletFallingItem.id, winnerRating, currentFallingRating, null, winnerItem, gauntletFallingItem
+            winnerId, gauntletFallingItem.id, winnerRating, currentFallingRating,
+            null, /* loserRank - not needed for falling phase */
+            null, /* winnerObj - skip stats tracking */
+            null  /* loserObj - skip stats tracking */
           );
           
           // Calculate floor based on defeated opponents - can't drop below the highest-rated defeated performer
@@ -3386,6 +3391,14 @@ async function fetchPerformerCount(performerFilter = {}) {
         
         // Update the falling item's rating with floor applied
         gauntletFallingItem.rating100 = adjustedLoserRating;
+        
+        // If floor was applied (adjusted rating differs from ELO-calculated rating),
+        // update the database to reflect the floor-adjusted rating.
+        // Note: handleComparison (called at line 3369) already tracked stats for this loss,
+        // so we pass null for performerObj to only update the rating without touching stats.
+        if (adjustedLoserRating !== newLoserRating && battleType === "performers") {
+          await updateItemRating(loserId, adjustedLoserRating, null, null);
+        }
         // Preserve the list of opponents already defeated during the climb
         // Note: Don't add the winner to gauntletDefeated - they beat us fair and square
         // gauntletDefeated is only for performers we actually defeated
