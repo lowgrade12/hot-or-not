@@ -11,6 +11,7 @@
   let gauntletDefeated = []; // IDs of items defeated in current run
   let gauntletFalling = false; // True when champion lost and is finding their floor
   let gauntletFallingItem = null; // The item that's falling to find its position
+  let gauntletFallingTested = []; // IDs of items already tested during falling phase (to avoid repeats)
   let totalItemsCount = 0; // Total items for position display
   let disableChoice = false; // Track when inputs should be disabled to prevent multiple events
   let battleType = "performers"; // HotOrNot is performers-only
@@ -801,6 +802,7 @@
     // Reset state
     gauntletFalling = false;
     gauntletFallingItem = null;
+    gauntletFallingTested = [];
     gauntletChampion = null;
     gauntletWins = 0;
     gauntletDefeated = [];
@@ -1883,6 +1885,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       const belowOpponents = performers.filter((s, idx) => {
         if (s.id === gauntletFallingItem.id) return false;
         if (gauntletDefeated.includes(s.id)) return false;
+        if (gauntletFallingTested.includes(s.id)) return false; // Skip opponents already tested during falling
         return idx > fallingIndex; // Below in ranking
       });
       
@@ -1928,6 +1931,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       gauntletDefeated = [];
       gauntletFalling = false;
       gauntletFallingItem = null;
+      gauntletFallingTested = [];
       
       // Pick random performer as challenger
       const randomIndex = Math.floor(Math.random() * performers.length);
@@ -2512,6 +2516,7 @@ async function fetchPerformerCount(performerFilter = {}) {
     gauntletDefeated = [];
     gauntletFalling = false;
     gauntletFallingItem = null;
+    gauntletFallingTested = [];
     
     // Hide the selection UI
     const selectionContainer = document.getElementById("hon-performer-selection");
@@ -3064,6 +3069,7 @@ async function fetchPerformerCount(performerFilter = {}) {
               gauntletDefeated = [];
               gauntletFalling = false;
               gauntletFallingItem = null;
+              gauntletFallingTested = [];
               // Show the actions again
               if (actionsEl) actionsEl.style.display = "";
               loadNewPair();
@@ -3308,8 +3314,8 @@ async function fetchPerformerCount(performerFilter = {}) {
           return;
         } else {
           // Falling item lost again - keep falling
-          // Note: We don't add winners to gauntletDefeated during falling phase
-          // gauntletDefeated is only for performers beaten during the climb
+          // Track this opponent to avoid matching against them again during falling
+          gauntletFallingTested.push(winnerId);
           
           // Use ELO-based calculation for the rating loss instead of direct assignment
           // This ensures the performer doesn't drop too dramatically from a single loss
@@ -3382,6 +3388,7 @@ async function fetchPerformerCount(performerFilter = {}) {
         // Champion LOST - start falling to find their floor
         gauntletFalling = true;
         gauntletFallingItem = loserItem; // The old champion is now falling
+        gauntletFallingTested = []; // Reset tested list for new falling phase
         
         // Calculate floor based on defeated opponents - can't drop below the highest-rated defeated performer
         const ratingFloor = await calculateDefeatedOpponentsFloor(gauntletDefeated);
@@ -3915,6 +3922,7 @@ function addFloatingButton() {
           gauntletDefeated = [];
           gauntletFalling = false;
           gauntletFallingItem = null;
+          gauntletFallingTested = [];
           
           // Update button states
           modal.querySelectorAll(".hon-mode-btn").forEach((b) => {
@@ -3953,6 +3961,7 @@ function addFloatingButton() {
           gauntletDefeated = [];
           gauntletFalling = false;
           gauntletFallingItem = null;
+          gauntletFallingTested = [];
         }
         // Apply ELO draw rating changes for skips in Swiss mode
         if (currentMode === "swiss" && currentPair.left && currentPair.right) {
@@ -4029,6 +4038,7 @@ function addFloatingButton() {
             gauntletDefeated = [];
             gauntletFalling = false;
             gauntletFallingItem = null;
+            gauntletFallingTested = [];
           }
           // Apply ELO draw rating changes for skips in Swiss mode
           if (currentMode === "swiss" && currentPair.left && currentPair.right) {
