@@ -3736,10 +3736,12 @@ async function fetchPerformerCount(performerFilter = {}) {
    * Looks for the rating stars section and adds the badge next to it.
    */
   async function injectBattleRankBadge() {
-    // Prevent concurrent badge injections - set flag immediately to minimize race window
-    if (badgeInjectionInProgress) {
+    // Use global flag to prevent concurrent injections (shared across all HotOrNot plugins)
+    // This handles both same-plugin races and cross-plugin races
+    if (window._honBadgeInjectionInProgress || badgeInjectionInProgress) {
       return;
     }
+    window._honBadgeInjectionInProgress = true;
     badgeInjectionInProgress = true;
     
     try {
@@ -3802,6 +3804,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       }
     } finally {
       badgeInjectionInProgress = false;
+      window._honBadgeInjectionInProgress = false;
     }
   }
 
