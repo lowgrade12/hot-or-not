@@ -1462,27 +1462,28 @@
       return 1;
     }
     
-    const performerFilter = getPerformerFilter();
+    // Fetch each defeated performer by ID individually
+    // (PerformerFilterType doesn't support filtering by id directly)
     const defeatedQuery = `
-      query FindDefeatedPerformers($performer_filter: PerformerFilterType, $filter: FindFilterType) {
-        findPerformers(performer_filter: $performer_filter, filter: $filter) {
-          performers {
-            id
-            rating100
-          }
+      query FindPerformer($id: ID!) {
+        findPerformer(id: $id) {
+          id
+          rating100
         }
       }
     `;
     
-    const defeatedResult = await graphqlQuery(defeatedQuery, {
-      performer_filter: { 
-        ...performerFilter,
-        id: { value: defeatedIds, modifier: "INCLUDES" }
-      },
-      filter: { per_page: -1 }
+    const performerPromises = defeatedIds.map(async (id) => {
+      try {
+        const result = await graphqlQuery(defeatedQuery, { id });
+        return result.findPerformer;
+      } catch (error) {
+        console.error(`[HotOrNot] Error fetching defeated performer ${id}:`, error);
+        return null;
+      }
     });
     
-    const defeatedPerformers = defeatedResult.findPerformers?.performers || [];
+    const defeatedPerformers = (await Promise.all(performerPromises)).filter(p => p !== null);
     if (defeatedPerformers.length > 0) {
       // Floor is 1 point above the highest-rated defeated performer
       const maxDefeatedRating = Math.max(...defeatedPerformers.map(p => p.rating100 || 50));
