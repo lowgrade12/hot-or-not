@@ -1390,3 +1390,93 @@
     font-size: 0.8rem;
   }
 }
+
+/* ============================================
+   BATTLE RANK BADGE (Performer Detail Page)
+   ============================================ */
+
+.hon-battle-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+  border: 1px solid #444;
+  color: #fff;
+  margin-left: 10px;
+  vertical-align: middle;
+  cursor: default;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hon-battle-rank-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.hon-rank-emoji {
+  font-size: 1.1em;
+}
+
+.hon-rank-text {
+  font-weight: 700;
+}
+
+.hon-rank-total {
+  color: #888;
+  font-size: 0.85em;
+}
+
+/* Rank tier styles */
+.hon-battle-rank-badge.hon-rank-legendary {
+  background: linear-gradient(135deg, #ffd700, #ffb700);
+  border-color: #ffc107;
+  color: #1a1a1a;
+}
+
+.hon-battle-rank-badge.hon-rank-legendary .hon-rank-total {
+  color: #5a4a00;
+}
+
+.hon-battle-rank-badge.hon-rank-gold {
+  background: linear-gradient(135deg, #c9a227, #a67c00);
+  border-color: #b8860b;
+  color: #fff;
+}
+
+.hon-battle-rank-badge.hon-rank-gold .hon-rank-total {
+  color: #ddd;
+}
+
+.hon-battle-rank-badge.hon-rank-silver {
+  background: linear-gradient(135deg, #a0a0a0, #707070);
+  border-color: #888;
+  color: #fff;
+}
+
+.hon-battle-rank-badge.hon-rank-silver .hon-rank-total {
+  color: #ddd;
+}
+
+.hon-battle-rank-badge.hon-rank-bronze {
+  background: linear-gradient(135deg, #cd7f32, #8b4513);
+  border-color: #a0522d;
+  color: #fff;
+}
+
+.hon-battle-rank-badge.hon-rank-bronze .hon-rank-total {
+  color: #ddd;
+}
+
+.hon-battle-rank-badge.hon-rank-default {
+  background: linear-gradient(135deg, #ff6b35, #e55039);
+  border-color: #ff5722;
+  color: #fff;
+}
+
+.hon-battle-rank-badge.hon-rank-default .hon-rank-total {
+  color: #ffccbb;
+}

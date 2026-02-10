@@ -3607,6 +3607,189 @@ async function fetchPerformerCount(performerFilter = {}) {
   }
 
   // ============================================
+  // PERFORMER PAGE RANK BADGE
+  // ============================================
+
+  /**
+   * Extract performer ID from a single performer page URL.
+   * Returns the performer ID if on /performers/{id} page, null otherwise.
+   * @returns {string|null} Performer ID or null
+   */
+  function getPerformerIdFromUrl() {
+    const path = window.location.pathname;
+    // Match /performers/{id} where {id} is a numeric performer ID (one or more digits)
+    // Matches paths like /performers/123, /performers/123/, /performers/123/scenes, etc.
+    // Uses (?:\/|$) to match either a trailing slash or end of string after the ID
+    const match = path.match(/^\/performers\/(\d+)(?:\/|$)/);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Check if we're on a single performer page (/performers/{id})
+   * @returns {boolean} True if on a single performer page
+   */
+  function isOnSinglePerformerPage() {
+    return getPerformerIdFromUrl() !== null;
+  }
+
+  /**
+   * Fetch the battle rank for a performer by comparing their rating to all performers.
+   * @param {string} performerId - The ID of the performer
+   * @returns {Promise<{rank: number, total: number, rating: number}|null>} Rank info or null on error
+   */
+  async function getPerformerBattleRank(performerId) {
+    try {
+      const performersQuery = `
+        query FindPerformersByRating($filter: FindFilterType) {
+          findPerformers(filter: $filter) {
+            count
+            performers {
+              id
+              rating100
+            }
+          }
+        }
+      `;
+
+      // Get ALL performers sorted by rating descending (highest first)
+      const result = await graphqlQuery(performersQuery, {
+        filter: {
+          per_page: -1, // Get all
+          sort: "rating",
+          direction: "DESC"
+        }
+      });
+
+      const performers = result.findPerformers.performers || [];
+      const total = performers.length;
+
+      if (total === 0) {
+        return null;
+      }
+
+      // Find the performer's position in the sorted list
+      const index = performers.findIndex(p => p.id === performerId);
+      if (index === -1) {
+        return null;
+      }
+
+      const performer = performers[index];
+      return {
+        rank: index + 1,
+        total: total,
+        rating: performer.rating100 || 0
+      };
+    } catch (error) {
+      console.error("[HotOrNot] Error fetching performer battle rank:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Create the battle rank badge element
+   * @param {number} rank - The performer's rank
+   * @param {number} total - Total number of performers
+   * @param {number} rating - The performer's rating100
+   * @returns {HTMLElement} The badge element
+   */
+  function createBattleRankBadge(rank, total, rating) {
+    const badge = document.createElement("div");
+    badge.className = "hon-battle-rank-badge";
+    badge.id = "hon-battle-rank-badge";
+    
+    // Determine rank tier for styling
+    const percentile = ((total - rank + 1) / total) * 100;
+    let tierClass = "";
+    let tierEmoji = "";
+    
+    if (percentile >= 95) {
+      tierClass = "hon-rank-legendary";
+      tierEmoji = "👑";
+    } else if (percentile >= 80) {
+      tierClass = "hon-rank-gold";
+      tierEmoji = "🥇";
+    } else if (percentile >= 60) {
+      tierClass = "hon-rank-silver";
+      tierEmoji = "🥈";
+    } else if (percentile >= 40) {
+      tierClass = "hon-rank-bronze";
+      tierEmoji = "🥉";
+    } else {
+      tierClass = "hon-rank-default";
+      tierEmoji = "🔥";
+    }
+    
+    badge.classList.add(tierClass);
+    badge.innerHTML = `
+      <span class="hon-rank-emoji">${tierEmoji}</span>
+      <span class="hon-rank-text">Battle Rank #${rank}</span>
+      <span class="hon-rank-total">of ${total}</span>
+    `;
+    badge.title = `Battle Rank #${rank} of ${total} performers (Rating: ${rating}/100)`;
+    
+    return badge;
+  }
+
+  /**
+   * Inject the battle rank badge into the performer detail page.
+   * Looks for the rating stars section and adds the badge next to it.
+   */
+  async function injectBattleRankBadge() {
+    const performerId = getPerformerIdFromUrl();
+    if (!performerId) {
+      return;
+    }
+
+    // Remove existing badge if present
+    const existingBadge = document.getElementById("hon-battle-rank-badge");
+    if (existingBadge) {
+      existingBadge.remove();
+    }
+
+    // Fetch the performer's battle rank
+    const rankInfo = await getPerformerBattleRank(performerId);
+    if (!rankInfo) {
+      console.log("[HotOrNot] Could not fetch battle rank for performer");
+      return;
+    }
+
+    // Create the badge
+    const badge = createBattleRankBadge(rankInfo.rank, rankInfo.total, rankInfo.rating);
+
+    // Find the best place to inject the badge
+    // Try to find the rating stars container first (next to star rating)
+    const ratingContainer = document.querySelector(".rating-stars") ||
+                           document.querySelector(".rating-number") ||
+                           document.querySelector("[class*='rating']");
+    
+    if (ratingContainer && ratingContainer.parentElement) {
+      // Insert badge next to the rating
+      ratingContainer.parentElement.appendChild(badge);
+      console.log(`[HotOrNot] Injected battle rank badge: #${rankInfo.rank} of ${rankInfo.total}`);
+      return;
+    }
+
+    // Alternative: Find performer detail header area
+    const detailHeader = document.querySelector(".performer-head") ||
+                        document.querySelector(".detail-header") ||
+                        document.querySelector(".performer-meta") ||
+                        document.querySelector(".detail-container h2")?.parentElement;
+    
+    if (detailHeader) {
+      detailHeader.appendChild(badge);
+      console.log(`[HotOrNot] Injected battle rank badge into header: #${rankInfo.rank} of ${rankInfo.total}`);
+      return;
+    }
+
+    // Last resort: Find performer name and insert after it
+    const performerName = document.querySelector("h2") || document.querySelector("h1");
+    if (performerName && performerName.parentElement) {
+      performerName.parentElement.insertBefore(badge, performerName.nextSibling);
+      console.log(`[HotOrNot] Injected battle rank badge after name: #${rankInfo.rank} of ${rankInfo.total}`);
+    }
+  }
+
+  // ============================================
   // MODAL & NAVIGATION
   // ============================================
 
@@ -3821,10 +4004,20 @@ function addFloatingButton() {
     console.log("[HotOrNot] Initialized");
     
     addFloatingButton();
+    
+    // Inject battle rank badge if on a single performer page
+    if (isOnSinglePerformerPage()) {
+      // Delay slightly to ensure the page has rendered
+      setTimeout(() => injectBattleRankBadge(), 500);
+    }
 
     // Watch for SPA navigation
     const observer = new MutationObserver(() => {
       addFloatingButton();
+      // Also try to inject badge when DOM changes on performer pages
+      if (isOnSinglePerformerPage() && !document.getElementById("hon-battle-rank-badge")) {
+        injectBattleRankBadge();
+      }
     });
 
     observer.observe(document.body, {
@@ -3855,6 +4048,12 @@ function addFloatingButton() {
               console.log('[HotOrNot] Cleared cached filters (no filters active)');
             }
           }
+        }
+        
+        // Inject battle rank badge when navigating to a single performer page
+        if (isOnSinglePerformerPage()) {
+          // Delay to allow the page to render
+          setTimeout(() => injectBattleRankBadge(), 500);
         }
       });
     }
