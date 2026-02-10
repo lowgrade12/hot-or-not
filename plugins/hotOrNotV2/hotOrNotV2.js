@@ -3621,7 +3621,8 @@ async function fetchPerformerCount(performerFilter = {}) {
       tierEmoji = "🔥";
     }
     
-    badge.classList.add(tierClass);
+    // Note: Tier-based color classes removed for better readability
+    // The tier emoji still indicates ranking percentile
     
     // Build match stats HTML if stats are available and performer has played matches
     let matchStatsHTML = '';

@@ -1430,56 +1430,8 @@
   font-size: 0.85em;
 }
 
-/* Rank tier styles */
-.hon-battle-rank-badge.hon-rank-legendary {
-  background: linear-gradient(135deg, #ffd700, #ffb700);
-  border-color: #ffc107;
-  color: #1a1a1a;
-}
-
-.hon-battle-rank-badge.hon-rank-legendary .hon-rank-total {
-  color: #5a4a00;
-}
-
-.hon-battle-rank-badge.hon-rank-gold {
-  background: linear-gradient(135deg, #c9a227, #a67c00);
-  border-color: #b8860b;
-  color: #fff;
-}
-
-.hon-battle-rank-badge.hon-rank-gold .hon-rank-total {
-  color: #ddd;
-}
-
-.hon-battle-rank-badge.hon-rank-silver {
-  background: linear-gradient(135deg, #a0a0a0, #707070);
-  border-color: #888;
-  color: #fff;
-}
-
-.hon-battle-rank-badge.hon-rank-silver .hon-rank-total {
-  color: #ddd;
-}
-
-.hon-battle-rank-badge.hon-rank-bronze {
-  background: linear-gradient(135deg, #cd7f32, #8b4513);
-  border-color: #a0522d;
-  color: #fff;
-}
-
-.hon-battle-rank-badge.hon-rank-bronze .hon-rank-total {
-  color: #ddd;
-}
-
-.hon-battle-rank-badge.hon-rank-default {
-  background: linear-gradient(135deg, #ff6b35, #e55039);
-  border-color: #ff5722;
-  color: #fff;
-}
-
-.hon-battle-rank-badge.hon-rank-default .hon-rank-total {
-  color: #ffccbb;
-}
+/* Note: Rank tier color styles removed for better readability.
+   Badge now uses consistent plain styling. Tier is still indicated by emoji. */
 
 /* ============================================
    MATCH STATS IN BATTLE RANK BADGE
@@ -1536,36 +1488,7 @@
   border-radius: 10px;
 }
 
-/* Dark text tier adjustments for match stats */
-.hon-battle-rank-badge.hon-rank-legendary .hon-match-stats {
-  border-left-color: rgba(0, 0, 0, 0.3);
-}
-
-.hon-battle-rank-badge.hon-rank-legendary .hon-wins {
-  color: #166534;
-}
-
-.hon-battle-rank-badge.hon-rank-legendary .hon-losses {
-  color: #991b1b;
-}
-
-.hon-battle-rank-badge.hon-rank-legendary .hon-draws {
-  color: #525252;
-}
-
-.hon-battle-rank-badge.hon-rank-legendary .hon-win-rate {
-  color: #1e40af;
-}
-
-.hon-battle-rank-badge.hon-rank-legendary .hon-streak-positive {
-  color: #166534;
-  background: rgba(22, 101, 52, 0.2);
-}
-
-.hon-battle-rank-badge.hon-rank-legendary .hon-streak-negative {
-  color: #991b1b;
-  background: rgba(153, 27, 27, 0.2);
-}
+/* Note: Tier-specific match stats adjustments removed as badge now uses plain styling */
 
 /* Responsive adjustments for match stats */
 @media (max-width: 768px) {
