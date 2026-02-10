@@ -1480,3 +1480,100 @@
 .hon-battle-rank-badge.hon-rank-default .hon-rank-total {
   color: #ffccbb;
 }
+
+/* ============================================
+   MATCH STATS IN BATTLE RANK BADGE
+   ============================================ */
+
+.hon-match-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 0.85em;
+}
+
+.hon-stats-record {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.hon-wins {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.hon-losses {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.hon-draws {
+  color: #a3a3a3;
+  font-weight: 600;
+}
+
+.hon-win-rate {
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.hon-streak-positive {
+  color: #4ade80;
+  font-weight: 700;
+  padding: 1px 6px;
+  background: rgba(74, 222, 128, 0.2);
+  border-radius: 10px;
+}
+
+.hon-streak-negative {
+  color: #f87171;
+  font-weight: 700;
+  padding: 1px 6px;
+  background: rgba(248, 113, 113, 0.2);
+  border-radius: 10px;
+}
+
+/* Dark text tier adjustments for match stats */
+.hon-battle-rank-badge.hon-rank-legendary .hon-match-stats {
+  border-left-color: rgba(0, 0, 0, 0.3);
+}
+
+.hon-battle-rank-badge.hon-rank-legendary .hon-wins {
+  color: #166534;
+}
+
+.hon-battle-rank-badge.hon-rank-legendary .hon-losses {
+  color: #991b1b;
+}
+
+.hon-battle-rank-badge.hon-rank-legendary .hon-draws {
+  color: #525252;
+}
+
+.hon-battle-rank-badge.hon-rank-legendary .hon-win-rate {
+  color: #1e40af;
+}
+
+.hon-battle-rank-badge.hon-rank-legendary .hon-streak-positive {
+  color: #166534;
+  background: rgba(22, 101, 52, 0.2);
+}
+
+.hon-battle-rank-badge.hon-rank-legendary .hon-streak-negative {
+  color: #991b1b;
+  background: rgba(153, 27, 27, 0.2);
+}
+
+/* Responsive adjustments for match stats */
+@media (max-width: 768px) {
+  .hon-match-stats {
+    display: none;
+  }
+  
+  .hon-battle-rank-badge {
+    flex-wrap: nowrap;
+  }
+}
