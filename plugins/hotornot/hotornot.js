@@ -3736,11 +3736,13 @@ async function fetchPerformerCount(performerFilter = {}) {
    * Looks for the rating stars section and adds the badge next to it.
    */
   async function injectBattleRankBadge() {
-    // Use global flag to prevent concurrent injections (shared across all HotOrNot plugins)
+    // Use compare-and-set pattern with global flag to prevent concurrent injections
     // This handles both same-plugin races and cross-plugin races
+    // In JavaScript's single-threaded event loop, this synchronous block before any await is atomic
     if (window._honBadgeInjectionInProgress || badgeInjectionInProgress) {
       return;
     }
+    // Set flags immediately after check - atomic in JS single-threaded event loop
     window._honBadgeInjectionInProgress = true;
     badgeInjectionInProgress = true;
     
