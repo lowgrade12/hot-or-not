@@ -3630,26 +3630,24 @@ async function fetchPerformerCount(performerFilter = {}) {
    * Looks for the rating stars section and adds the badge next to it.
    */
   async function injectBattleRankBadge() {
-    // Prevent concurrent badge injections
+    // Prevent concurrent badge injections - set flag immediately to minimize race window
     if (badgeInjectionInProgress) {
       return;
     }
-    
-    const performerId = getPerformerIdFromUrl();
-    if (!performerId) {
-      return;
-    }
-
-    // Check if badge already exists (another plugin or previous call may have added it)
-    const existingBadge = document.getElementById("hon-battle-rank-badge");
-    if (existingBadge) {
-      return;
-    }
-
-    // Set flag to prevent concurrent injections
     badgeInjectionInProgress = true;
     
     try {
+      const performerId = getPerformerIdFromUrl();
+      if (!performerId) {
+        return;
+      }
+
+      // Check if badge already exists (another plugin or previous call may have added it)
+      const existingBadge = document.getElementById("hon-battle-rank-badge");
+      if (existingBadge) {
+        return;
+      }
+
       // Fetch the performer's battle rank
       const rankInfo = await getPerformerBattleRank(performerId);
       if (!rankInfo) {
