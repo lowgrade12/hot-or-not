@@ -3699,8 +3699,8 @@ async function fetchPerformerCount(performerFilter = {}) {
         console.log(`[HotOrNot] Injected battle rank badge after name: #${rankInfo.rank} of ${rankInfo.total}`);
       }
     } finally {
-      badgeInjectionInProgress = false;
       window._honBadgeInjectionInProgress = false;
+      badgeInjectionInProgress = false;
     }
   }
 
