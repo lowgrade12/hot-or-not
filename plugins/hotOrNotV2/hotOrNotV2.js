@@ -3267,6 +3267,47 @@ async function fetchPerformerCount(performerFilter = {}) {
           // Note: We don't add winners to gauntletDefeated during falling phase
           // gauntletDefeated is only for performers beaten during the climb
           
+          // Use ELO-based calculation for the rating loss instead of direct assignment
+          // This ensures the performer doesn't drop too dramatically from a single loss
+          const currentFallingRating = gauntletFallingItem.rating100 || 50;
+          const { newLoserRating, loserChange } = await handleComparison(
+            winnerId, gauntletFallingItem.id, winnerRating, currentFallingRating, null, winnerItem, gauntletFallingItem
+          );
+          
+          // Calculate floor based on defeated opponents - can't drop below the highest-rated defeated performer
+          // This prevents the falling performer from dropping below performers they've already proven they can beat
+          let ratingFloor = 1;
+          if (gauntletDefeated.length > 0) {
+            // Fetch ratings of defeated performers to find the floor
+            const performerFilter = getPerformerFilter();
+            const defeatedQuery = `
+              query FindDefeatedPerformers($performer_filter: PerformerFilterType, $filter: FindFilterType) {
+                findPerformers(performer_filter: $performer_filter, filter: $filter) {
+                  performers {
+                    id
+                    rating100
+                  }
+                }
+              }
+            `;
+            const defeatedResult = await graphqlQuery(defeatedQuery, {
+              performer_filter: { 
+                ...performerFilter,
+                id: { value: gauntletDefeated, modifier: "INCLUDES" }
+              },
+              filter: { per_page: -1 }
+            });
+            const defeatedPerformers = defeatedResult.findPerformers?.performers || [];
+            if (defeatedPerformers.length > 0) {
+              // Floor is 1 point above the highest-rated defeated performer
+              const maxDefeatedRating = Math.max(...defeatedPerformers.map(p => p.rating100 || 50));
+              ratingFloor = maxDefeatedRating + 1;
+            }
+          }
+          
+          // Apply the floor - can't drop below performers already beaten
+          const newFallingRating = Math.max(ratingFloor, newLoserRating);
+          
           // Fetch latest performer data to get current stats before updating (parallel fetch for performance)
           let freshFallingPerformer = gauntletFallingItem;
           let freshWinnerPerformer = winnerItem;
@@ -3279,11 +3320,6 @@ async function fetchPerformerCount(performerFilter = {}) {
             freshFallingPerformer = fetchedFalling || gauntletFallingItem;
             freshWinnerPerformer = fetchedWinner || winnerItem;
           }
-          
-          // Update falling performer's rating to just below the winner (they lost, so they fall)
-          // Ensure the rating only goes down, never up - a falling performer should only move down in ranking
-          const currentFallingRating = gauntletFallingItem.rating100 || 50;
-          const newFallingRating = Math.max(1, Math.min(currentFallingRating, winnerRating - 1));
           
           // Track stats for both participants
           // Track loss for the falling performer with their new (lower) rating
@@ -3299,9 +3335,14 @@ async function fetchPerformerCount(performerFilter = {}) {
           winnerCard.classList.add("hon-winner");
           if (loserCard) loserCard.classList.add("hon-loser");
           
+          // Show rating animation for the falling performer
+          if (loserCard) {
+            showRatingAnimation(loserCard, currentFallingRating, newFallingRating, loserChange, false);
+          }
+          
           setTimeout(() => {
             loadNewPair();
-          }, 800);
+          }, 1500);
           return;
         }
       }
@@ -3320,8 +3361,43 @@ async function fetchPerformerCount(performerFilter = {}) {
         // Champion LOST - start falling to find their floor
         gauntletFalling = true;
         gauntletFallingItem = loserItem; // The old champion is now falling
-        // Update the falling item's rating to match what handleComparison calculated
-        gauntletFallingItem.rating100 = newLoserRating;
+        
+        // Calculate floor based on defeated opponents - can't drop below the highest-rated defeated performer
+        // This prevents the falling performer from dropping below performers they've already proven they can beat
+        let ratingFloor = 1;
+        if (gauntletDefeated.length > 0) {
+          // Fetch ratings of defeated performers to find the floor
+          const performerFilter = getPerformerFilter();
+          const defeatedQuery = `
+            query FindDefeatedPerformers($performer_filter: PerformerFilterType, $filter: FindFilterType) {
+              findPerformers(performer_filter: $performer_filter, filter: $filter) {
+                performers {
+                  id
+                  rating100
+                }
+              }
+            }
+          `;
+          const defeatedResult = await graphqlQuery(defeatedQuery, {
+            performer_filter: { 
+              ...performerFilter,
+              id: { value: gauntletDefeated, modifier: "INCLUDES" }
+            },
+            filter: { per_page: -1 }
+          });
+          const defeatedPerformers = defeatedResult.findPerformers?.performers || [];
+          if (defeatedPerformers.length > 0) {
+            // Floor is 1 point above the highest-rated defeated performer
+            const maxDefeatedRating = Math.max(...defeatedPerformers.map(p => p.rating100 || 50));
+            ratingFloor = maxDefeatedRating + 1;
+          }
+        }
+        
+        // Apply the floor - can't drop below performers already beaten
+        const adjustedLoserRating = Math.max(ratingFloor, newLoserRating);
+        
+        // Update the falling item's rating with floor applied
+        gauntletFallingItem.rating100 = adjustedLoserRating;
         // Preserve the list of opponents already defeated during the climb
         // Note: Don't add the winner to gauntletDefeated - they beat us fair and square
         // gauntletDefeated is only for performers we actually defeated
@@ -3344,7 +3420,10 @@ async function fetchPerformerCount(performerFilter = {}) {
       
       showRatingAnimation(winnerCard, winnerRating, newWinnerRating, winnerChange, true);
       if (loserCard) {
-        showRatingAnimation(loserCard, loserRating, newLoserRating, loserChange, false);
+        // Use the falling item's actual new rating (which may have floor applied) for the animation
+        const actualLoserRating = gauntletFallingItem ? gauntletFallingItem.rating100 : newLoserRating;
+        const actualLoserChange = actualLoserRating - loserRating;
+        showRatingAnimation(loserCard, loserRating, actualLoserRating, actualLoserChange, false);
       }
       
       // Load new pair after animation
