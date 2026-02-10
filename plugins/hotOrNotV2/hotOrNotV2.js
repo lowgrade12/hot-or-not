@@ -1450,6 +1450,48 @@
     return newRating;
   }
 
+  /**
+   * Calculate the rating floor based on defeated opponents in gauntlet mode.
+   * The floor is 1 point above the highest-rated defeated performer.
+   * This prevents a falling performer from dropping below performers they've already beaten.
+   * @param {Array<string>} defeatedIds - Array of IDs of defeated performers
+   * @returns {Promise<number>} The rating floor (minimum 1)
+   */
+  async function calculateDefeatedOpponentsFloor(defeatedIds) {
+    if (!defeatedIds || defeatedIds.length === 0) {
+      return 1;
+    }
+    
+    const performerFilter = getPerformerFilter();
+    const defeatedQuery = `
+      query FindDefeatedPerformers($performer_filter: PerformerFilterType, $filter: FindFilterType) {
+        findPerformers(performer_filter: $performer_filter, filter: $filter) {
+          performers {
+            id
+            rating100
+          }
+        }
+      }
+    `;
+    
+    const defeatedResult = await graphqlQuery(defeatedQuery, {
+      performer_filter: { 
+        ...performerFilter,
+        id: { value: defeatedIds, modifier: "INCLUDES" }
+      },
+      filter: { per_page: -1 }
+    });
+    
+    const defeatedPerformers = defeatedResult.findPerformers?.performers || [];
+    if (defeatedPerformers.length > 0) {
+      // Floor is 1 point above the highest-rated defeated performer
+      const maxDefeatedRating = Math.max(...defeatedPerformers.map(p => p.rating100 || 50));
+      return maxDefeatedRating + 1;
+    }
+    
+    return 1;
+  }
+
 
   // ============================================
   // PERFORMER FUNCTIONS
@@ -3275,35 +3317,7 @@ async function fetchPerformerCount(performerFilter = {}) {
           );
           
           // Calculate floor based on defeated opponents - can't drop below the highest-rated defeated performer
-          // This prevents the falling performer from dropping below performers they've already proven they can beat
-          let ratingFloor = 1;
-          if (gauntletDefeated.length > 0) {
-            // Fetch ratings of defeated performers to find the floor
-            const performerFilter = getPerformerFilter();
-            const defeatedQuery = `
-              query FindDefeatedPerformers($performer_filter: PerformerFilterType, $filter: FindFilterType) {
-                findPerformers(performer_filter: $performer_filter, filter: $filter) {
-                  performers {
-                    id
-                    rating100
-                  }
-                }
-              }
-            `;
-            const defeatedResult = await graphqlQuery(defeatedQuery, {
-              performer_filter: { 
-                ...performerFilter,
-                id: { value: gauntletDefeated, modifier: "INCLUDES" }
-              },
-              filter: { per_page: -1 }
-            });
-            const defeatedPerformers = defeatedResult.findPerformers?.performers || [];
-            if (defeatedPerformers.length > 0) {
-              // Floor is 1 point above the highest-rated defeated performer
-              const maxDefeatedRating = Math.max(...defeatedPerformers.map(p => p.rating100 || 50));
-              ratingFloor = maxDefeatedRating + 1;
-            }
-          }
+          const ratingFloor = await calculateDefeatedOpponentsFloor(gauntletDefeated);
           
           // Apply the floor - can't drop below performers already beaten
           const newFallingRating = Math.max(ratingFloor, newLoserRating);
@@ -3363,35 +3377,7 @@ async function fetchPerformerCount(performerFilter = {}) {
         gauntletFallingItem = loserItem; // The old champion is now falling
         
         // Calculate floor based on defeated opponents - can't drop below the highest-rated defeated performer
-        // This prevents the falling performer from dropping below performers they've already proven they can beat
-        let ratingFloor = 1;
-        if (gauntletDefeated.length > 0) {
-          // Fetch ratings of defeated performers to find the floor
-          const performerFilter = getPerformerFilter();
-          const defeatedQuery = `
-            query FindDefeatedPerformers($performer_filter: PerformerFilterType, $filter: FindFilterType) {
-              findPerformers(performer_filter: $performer_filter, filter: $filter) {
-                performers {
-                  id
-                  rating100
-                }
-              }
-            }
-          `;
-          const defeatedResult = await graphqlQuery(defeatedQuery, {
-            performer_filter: { 
-              ...performerFilter,
-              id: { value: gauntletDefeated, modifier: "INCLUDES" }
-            },
-            filter: { per_page: -1 }
-          });
-          const defeatedPerformers = defeatedResult.findPerformers?.performers || [];
-          if (defeatedPerformers.length > 0) {
-            // Floor is 1 point above the highest-rated defeated performer
-            const maxDefeatedRating = Math.max(...defeatedPerformers.map(p => p.rating100 || 50));
-            ratingFloor = maxDefeatedRating + 1;
-          }
-        }
+        const ratingFloor = await calculateDefeatedOpponentsFloor(gauntletDefeated);
         
         // Apply the floor - can't drop below performers already beaten
         const adjustedLoserRating = Math.max(ratingFloor, newLoserRating);
