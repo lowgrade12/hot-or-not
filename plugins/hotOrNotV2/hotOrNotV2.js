@@ -15,6 +15,7 @@
   let disableChoice = false; // Track when inputs should be disabled to prevent multiple events
   let battleType = "performers"; // HotOrNot is performers-only
   let cachedUrlFilter = null; // Cache the URL filter when modal is opened
+  let badgeInjectionInProgress = false; // Flag to prevent concurrent badge injections
 
   // GraphQL filter modifier constants
   // Array-based modifiers require value_list field for enum-based criterion inputs
@@ -3629,57 +3630,74 @@ async function fetchPerformerCount(performerFilter = {}) {
    * Looks for the rating stars section and adds the badge next to it.
    */
   async function injectBattleRankBadge() {
+    // Prevent concurrent badge injections
+    if (badgeInjectionInProgress) {
+      return;
+    }
+    
     const performerId = getPerformerIdFromUrl();
     if (!performerId) {
       return;
     }
 
-    // Remove existing badge if present
+    // Check if badge already exists (another plugin or previous call may have added it)
     const existingBadge = document.getElementById("hon-battle-rank-badge");
     if (existingBadge) {
-      existingBadge.remove();
-    }
-
-    // Fetch the performer's battle rank
-    const rankInfo = await getPerformerBattleRank(performerId);
-    if (!rankInfo) {
-      console.log("[HotOrNot] Could not fetch battle rank for performer");
       return;
     }
 
-    // Create the badge
-    const badge = createBattleRankBadge(rankInfo.rank, rankInfo.total, rankInfo.rating);
-
-    // Find the best place to inject the badge
-    // Try to find the rating stars container first (next to star rating)
-    const ratingContainer = document.querySelector(".rating-stars") ||
-                           document.querySelector(".rating-number") ||
-                           document.querySelector("[class*='rating']");
+    // Set flag to prevent concurrent injections
+    badgeInjectionInProgress = true;
     
-    if (ratingContainer && ratingContainer.parentElement) {
-      // Insert badge next to the rating
-      ratingContainer.parentElement.appendChild(badge);
-      console.log(`[HotOrNot] Injected battle rank badge: #${rankInfo.rank} of ${rankInfo.total}`);
-      return;
-    }
+    try {
+      // Fetch the performer's battle rank
+      const rankInfo = await getPerformerBattleRank(performerId);
+      if (!rankInfo) {
+        console.log("[HotOrNot] Could not fetch battle rank for performer");
+        return;
+      }
 
-    // Alternative: Find performer detail header area
-    const detailHeader = document.querySelector(".performer-head") ||
-                        document.querySelector(".detail-header") ||
-                        document.querySelector(".performer-meta") ||
-                        document.querySelector(".detail-container h2")?.parentElement;
-    
-    if (detailHeader) {
-      detailHeader.appendChild(badge);
-      console.log(`[HotOrNot] Injected battle rank badge into header: #${rankInfo.rank} of ${rankInfo.total}`);
-      return;
-    }
+      // Double-check badge doesn't exist after async fetch (another call may have completed)
+      if (document.getElementById("hon-battle-rank-badge")) {
+        return;
+      }
 
-    // Last resort: Find performer name and insert after it
-    const performerName = document.querySelector("h2") || document.querySelector("h1");
-    if (performerName && performerName.parentElement) {
-      performerName.parentElement.insertBefore(badge, performerName.nextSibling);
-      console.log(`[HotOrNot] Injected battle rank badge after name: #${rankInfo.rank} of ${rankInfo.total}`);
+      // Create the badge
+      const badge = createBattleRankBadge(rankInfo.rank, rankInfo.total, rankInfo.rating);
+
+      // Find the best place to inject the badge
+      // Try to find the rating stars container first (next to star rating)
+      const ratingContainer = document.querySelector(".rating-stars") ||
+                             document.querySelector(".rating-number") ||
+                             document.querySelector("[class*='rating']");
+      
+      if (ratingContainer && ratingContainer.parentElement) {
+        // Insert badge next to the rating
+        ratingContainer.parentElement.appendChild(badge);
+        console.log(`[HotOrNot] Injected battle rank badge: #${rankInfo.rank} of ${rankInfo.total}`);
+        return;
+      }
+
+      // Alternative: Find performer detail header area
+      const detailHeader = document.querySelector(".performer-head") ||
+                          document.querySelector(".detail-header") ||
+                          document.querySelector(".performer-meta") ||
+                          document.querySelector(".detail-container h2")?.parentElement;
+      
+      if (detailHeader) {
+        detailHeader.appendChild(badge);
+        console.log(`[HotOrNot] Injected battle rank badge into header: #${rankInfo.rank} of ${rankInfo.total}`);
+        return;
+      }
+
+      // Last resort: Find performer name and insert after it
+      const performerName = document.querySelector("h2") || document.querySelector("h1");
+      if (performerName && performerName.parentElement) {
+        performerName.parentElement.insertBefore(badge, performerName.nextSibling);
+        console.log(`[HotOrNot] Injected battle rank badge after name: #${rankInfo.rank} of ${rankInfo.total}`);
+      }
+    } finally {
+      badgeInjectionInProgress = false;
     }
   }
 
