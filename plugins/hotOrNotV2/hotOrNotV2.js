@@ -3822,36 +3822,45 @@ async function fetchPerformerCount(performerFilter = {}) {
     return false;
   }
 
-function addFloatingButton() {
-    const existingBtn = document.getElementById("hon-floating-btn");
-    
-    // Remove button if we're not on the performers page
+  function addFloatingButton() {
+    const buttonId = "plugin_hon";
+
+    // Remove if not on performers page
     if (!shouldShowButton()) {
-      if (existingBtn) existingBtn.remove();
-      return;
+        const existing = document.getElementById(buttonId);
+        if (existing) {
+            existing.closest("a")?.remove();
+        }
+        return;
     }
-    
-    // Don't add duplicate
-    if (existingBtn) return;
 
-    const btn = document.createElement("button");
-    btn.id = "hon-floating-btn";
-    btn.innerHTML = "🔥";
-    btn.title = "HotOrNot";
+    // Prevent duplicates
+    if (document.getElementById(buttonId)) return;
 
-    btn.addEventListener("mouseenter", () => {
-      btn.style.transform = "scale(1.1)";
-      btn.style.boxShadow = "0 6px 20px rgba(13, 110, 253, 0.6)";
-    });
+    const buttonContainer = document.createElement("a");
+    buttonContainer.className = "mr-2";
 
-    btn.addEventListener("mouseleave", () => {
-      btn.style.transform = "scale(1)";
-      btn.style.boxShadow = "0 4px 15px rgba(13, 110, 253, 0.4)";
-    });
+    buttonContainer.innerHTML = `
+        <button id="${buttonId}" 
+                type="button" 
+                class="minimal d-flex align-items-center h-100 btn btn-primary"
+                title="HotOrNot">
+            <span class="d-flex align-items-center">
+                HotorNot
+            </span>
+        </button>
+    `;
 
-    btn.addEventListener("click", openRankingModal);
+    // Attach click handler after insertion
+    buttonContainer
+        .querySelector(`#${buttonId}`)
+        .addEventListener("click", openRankingModal);
 
-    document.body.appendChild(btn);
+    // Append to navbar (adjust selector if needed)
+    const navTarget = document.querySelector(".navbar-nav");
+    if (navTarget) {
+        navTarget.appendChild(buttonContainer);
+    }
   }
 
   async function openRankingModal() {
