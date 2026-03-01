@@ -218,8 +218,8 @@
       return value;
     }
     
-    // Convert to uppercase and replace spaces with underscores
-    const normalized = value.toUpperCase().replace(/\s+/g, '_');
+    // Convert to uppercase and replace spaces/hyphens with underscores
+    const normalized = value.toUpperCase().replace(/[\s-]+/g, '_');
     
     // Validate against known GenderEnum values
     const validGenders = new Set([
