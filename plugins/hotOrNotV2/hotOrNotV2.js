@@ -17,6 +17,7 @@
   let battleType = "performers"; // HotOrNot is performers-only
   let cachedUrlFilter = null; // Cache the URL filter when modal is opened
   let badgeInjectionInProgress = false; // Flag to prevent concurrent badge injections
+  let previousBattle = null; // Stores pre-battle state for undo functionality
 
   // GraphQL filter modifier constants
   // Array-based modifiers require value_list field for enum-based criterion inputs
@@ -218,7 +219,7 @@
       return value;
     }
     
-    // Convert to uppercase and replace spaces/hyphens with underscores
+    // Convert to uppercase and replace spaces and hyphens with underscores
     const normalized = value.toUpperCase().replace(/[\s-]+/g, '_');
     
     // Validate against known GenderEnum values
@@ -892,7 +893,8 @@
         current_streak: 0,
         best_streak: 0,
         worst_streak: 0,
-        last_match: null
+        last_match: null,
+        recent_results: 0
       };
     }
     
@@ -908,7 +910,8 @@
           current_streak: stats.current_streak || 0,
           best_streak: stats.best_streak || 0,
           worst_streak: stats.worst_streak || 0,
-          last_match: stats.last_match || null
+          last_match: stats.last_match || null,
+          recent_results: stats.recent_results || 0
         };
       } catch (e) {
         console.warn(`[HotOrNot] Failed to parse hotornot_stats for performer ${performer.id}:`, e);
@@ -927,7 +930,8 @@
         current_streak: 0,
         best_streak: 0,
         worst_streak: 0,
-        last_match: null
+        last_match: null,
+        recent_results: 0
       };
     }
     
@@ -940,7 +944,8 @@
       current_streak: 0,
       best_streak: 0,
       worst_streak: 0,
-      last_match: null
+      last_match: null,
+      recent_results: 0
     };
   }
 
@@ -966,6 +971,7 @@
       newStats.current_streak = currentStats.current_streak;
       newStats.best_streak = currentStats.best_streak;
       newStats.worst_streak = currentStats.worst_streak;
+      newStats.recent_results = currentStats.recent_results || 0;
       return newStats;
     }
     
@@ -978,6 +984,10 @@
       newStats.current_streak = 0;
       newStats.best_streak = currentStats.best_streak;
       newStats.worst_streak = currentStats.worst_streak;
+      // For trend tracking, draws count as 0 (loss) since they don't indicate a clear victory
+      let recentResults = currentStats.recent_results || 0;
+      recentResults = (recentResults << 1) & 0x3FF; // Shift left, add 0 for draw, keep only 10 bits
+      newStats.recent_results = recentResults;
       return newStats;
     }
     
@@ -1008,7 +1018,147 @@
       newStats.worst_streak = Math.min(currentStats.worst_streak, newStats.current_streak);
     }
     
+    // Update recent results bitmask for trend tracking
+    // Each bit represents a match outcome: 1=win, 0=loss
+    // Least significant bit is the most recent match
+    let recentResults = currentStats.recent_results || 0;
+    recentResults = (recentResults << 1) | (won ? 1 : 0); // Shift left and add new result
+    recentResults = recentResults & 0x3FF; // Keep only 10 bits (0x3FF = 1023)
+    newStats.recent_results = recentResults;
+    
     return newStats;
+  }
+
+  /**
+   * Get confidence level based on match count.
+   * Returns an object with emoji, label, and match count.
+   * @param {Object} stats - Stats object from parsePerformerEloData
+   * @returns {Object} Confidence indicator with emoji, label, and matches
+   */
+  function getConfidenceLevel(stats) {
+    const matches = stats.total_matches || 0;
+    if (matches < 10) {
+      return { emoji: "⚡", label: "New", matches };
+    } else if (matches < 30) {
+      return { emoji: "📊", label: "Growing", matches };
+    } else {
+      return { emoji: "✅", label: "Established", matches };
+    }
+  }
+
+  /**
+   * Calculate rating confidence interval based on match count.
+   * More matches = narrower confidence interval (more reliable rating).
+   * @param {number} rating - Current rating (1-100)
+   * @param {number} matchCount - Number of matches played
+   * @returns {Object} Object with low, high bounds and match count
+   */
+  function getRatingConfidenceInterval(rating, matchCount) {
+    const matches = matchCount || 0;
+    const baseUncertainty = 15;
+    const uncertainty = Math.round(baseUncertainty / Math.sqrt(Math.max(1, matches)));
+    
+    return {
+      low: Math.max(1, rating - uncertainty),
+      high: Math.min(100, rating + uncertainty),
+      matches: matches
+    };
+  }
+
+  /**
+   * Calculate skip/draw rate for a performer.
+   * High skip rate indicates a "controversial" performer users have trouble deciding on.
+   * @param {Object} stats - Stats object from parsePerformerEloData
+   * @returns {number} Skip rate as decimal (0-1)
+   */
+  function getSkipRate(stats) {
+    if (!stats || stats.total_matches === 0) return 0;
+    return (stats.draws || 0) / stats.total_matches;
+  }
+
+  /**
+   * Check if a performer is "controversial" based on skip rate.
+   * Controversial performers are skipped more than 30% of the time.
+   * @param {Object} stats - Stats object from parsePerformerEloData
+   * @returns {boolean} True if performer is controversial
+   */
+  function isControversialPerformer(stats) {
+    return getSkipRate(stats) > 0.3;
+  }
+
+  // Constants for streak-based adjustments
+  const STREAK_THRESHOLD_MODERATE = 3;  // Streak length to trigger moderate bonus
+  const STREAK_THRESHOLD_STRONG = 5;    // Streak length to trigger strong bonus
+  const STREAK_RATING_MULTIPLIER = 2;   // Rating points adjustment per streak count
+
+  /**
+   * Calculate streak-based weight modifier for matchmaking.
+   * Performers on streaks (hot or cold) get a weight bonus to give 
+   * opportunities to continue or break their streaks.
+   * @param {Object} stats - Stats object from parsePerformerEloData
+   * @returns {number} Weight multiplier (1.0 = no bonus, higher = more likely to be selected)
+   */
+  function getStreakWeight(stats) {
+    const streak = stats.current_streak || 0;
+    const absStreak = Math.abs(streak);
+    
+    // No bonus for performers without significant streaks
+    if (absStreak < STREAK_THRESHOLD_MODERATE) {
+      return 1.0;
+    }
+    
+    // Strong streak bonus (5+): 1.5x weight
+    // Moderate streak bonus (3-4): 1.3x weight
+    // This gives streaking performers slightly higher chance to be selected
+    // so their streak can either continue or be broken
+    if (absStreak >= STREAK_THRESHOLD_STRONG) {
+      return 1.5;
+    } else {
+      return 1.3;
+    }
+  }
+
+  /**
+   * Get a streak indicator icon based on current streak.
+   * @param {number} streak - Current streak (positive = winning, negative = losing)
+   * @returns {string} Icon string or empty string if no significant streak
+   */
+  function getStreakIcon(streak) {
+    if (streak >= STREAK_THRESHOLD_MODERATE) return "🔥"; // Hot streak
+    if (streak <= -STREAK_THRESHOLD_MODERATE) return "❄️"; // Cold streak
+    return "";
+  }
+
+  /**
+   * Get performance trend from recent results bitmask.
+   * Compares recent win rate to overall win rate.
+   * @param {Object} stats - Stats object from parsePerformerEloData
+   * @returns {Object} Object with trend string and emoji
+   */
+  function getPerformanceTrend(stats) {
+    if (!stats.recent_results || stats.total_matches < 5) {
+      return { trend: "new", emoji: "⚡", label: "New" };
+    }
+    
+    // Count wins in recent results using Brian Kernighan's bit counting algorithm
+    let recentWins = 0;
+    let n = stats.recent_results;
+    while (n) {
+      recentWins++;
+      n &= n - 1; // Clear the least significant set bit
+    }
+    
+    const recentMatches = Math.min(10, stats.total_matches);
+    const recentWinRate = recentWins / recentMatches;
+    const overallWinRate = stats.wins / stats.total_matches;
+    
+    if (recentWinRate > overallWinRate + 0.2) {
+      return { trend: "rising", emoji: "📈", label: "Rising" };
+    }
+    if (recentWinRate < overallWinRate - 0.2) {
+      return { trend: "falling", emoji: "📉", label: "Falling" };
+    }
+    return { trend: "stable", emoji: "📊", label: "Stable" };
   }
 
   /**
@@ -1667,9 +1817,13 @@ async function fetchPerformerCount(performerFilter = {}) {
       }
     }
     
-    // Combine weights: multiply match count weight by recency weight
-    // This ensures both factors contribute to the final selection probability
-    return matchCountWeight * recencyWeight;
+    // Calculate streak weight component
+    // Performers on streaks get a bonus to give opportunities for streak continuation/breaking
+    const streakWeight = getStreakWeight(stats);
+    
+    // Combine weights: multiply all factors together
+    // This ensures match count, recency, and streak all contribute to the final selection probability
+    return matchCountWeight * recencyWeight * streakWeight;
   }
 
   /**
@@ -1787,12 +1941,36 @@ async function fetchPerformerCount(performerFilter = {}) {
       }
     }
 
+    // Get streak-adjusted target rating for opponent selection
+    // If performer is on a hot streak, look for opponents ABOVE their rating
+    // If performer is on a cold streak, look for opponents BELOW their rating
+    // This helps accelerate rating convergence and makes streaks more interesting
+    const stats1 = parsePerformerEloData(performer1);
+    const streak1 = stats1.current_streak || 0;
+    let targetRating = rating1;
+    
+    if (Math.abs(streak1) >= STREAK_THRESHOLD_MODERATE) {
+      // Streak bonus/penalty: up to ±10 rating points based on streak magnitude
+      const maxStreakAdjustment = 10;
+      const streakAdjustment = Math.min(Math.abs(streak1) * STREAK_RATING_MULTIPLIER, maxStreakAdjustment);
+      if (streak1 > 0) {
+        // Hot streak: look for slightly tougher opponents
+        targetRating = rating1 + streakAdjustment;
+        console.log(`[HotOrNot] Hot streak (${streak1}): targeting opponents near rating ${targetRating} (+${streakAdjustment})`);
+      } else {
+        // Cold streak: look for slightly easier opponents
+        targetRating = rating1 - streakAdjustment;
+        console.log(`[HotOrNot] Cold streak (${streak1}): targeting opponents near rating ${targetRating} (-${streakAdjustment})`);
+      }
+    }
+
     // Find performers within adaptive rating window (tighter for larger pools)
+    // Window is centered on targetRating (which may be streak-adjusted)
     const matchWindow = performers.length > 50 ? 10 : performers.length > 20 ? 15 : 25;
     const similarPerformersWithWeights = performersWithWeights.filter(pw => {
       if (pw.performer.id === performer1.id) return false;
       const rating = pw.performer.rating100 || 50;
-      return Math.abs(rating - rating1) <= matchWindow;
+      return Math.abs(rating - targetRating) <= matchWindow;
     });
 
     let performer2;
@@ -1813,13 +1991,13 @@ async function fetchPerformerCount(performerFilter = {}) {
         performer2Index = selected2.index;
       }
     } else {
-      // No similar performers, pick closest with recency weighting
+      // No similar performers within window, pick closest to targetRating with recency weighting
       const otherPerformersWithWeights = performersWithWeights.filter(pw => pw.performer.id !== performer1.id);
       
-      // Sort by rating similarity
+      // Sort by rating similarity to targetRating (which may be streak-adjusted)
       otherPerformersWithWeights.sort((a, b) => {
-        const diffA = Math.abs((a.performer.rating100 || 50) - rating1);
-        const diffB = Math.abs((b.performer.rating100 || 50) - rating1);
+        const diffA = Math.abs((a.performer.rating100 || 50) - targetRating);
+        const diffB = Math.abs((b.performer.rating100 || 50) - targetRating);
         return diffA - diffB;
       });
       
@@ -2328,6 +2506,41 @@ async function fetchPerformerCount(performerFilter = {}) {
     const sceneCount = performer.scene_count || 0;
     const stashRating = performer.rating100 ? `${performer.rating100}/100` : "Unrated";
     
+    // Parse stats for enhanced display
+    const stats = parsePerformerEloData(performer);
+    const confidence = getConfidenceLevel(stats);
+    const rating = performer.rating100 || 50;
+    const ratingInterval = getRatingConfidenceInterval(rating, stats.total_matches);
+    
+    // Build confidence and stats display
+    let statsDisplay = '';
+    if (stats.total_matches > 0) {
+      const winRate = ((stats.wins / stats.total_matches) * 100).toFixed(0);
+      const streakIcon = getStreakIcon(stats.current_streak);
+      statsDisplay = `
+        <div class="hon-meta-item hon-stats-inline">
+          <strong>Matches:</strong> ${stats.total_matches} 
+          <span class="hon-confidence-badge" title="${confidence.label} performer">${confidence.emoji}</span>
+        </div>
+        <div class="hon-meta-item">
+          <strong>Win Rate:</strong> ${winRate}% ${streakIcon}
+        </div>
+      `;
+    } else {
+      statsDisplay = `
+        <div class="hon-meta-item hon-stats-inline">
+          <strong>Matches:</strong> 0 
+          <span class="hon-confidence-badge" title="${confidence.label} performer">${confidence.emoji}</span>
+        </div>
+      `;
+    }
+    
+    // Enhanced rating display with confidence interval if enough matches
+    let enhancedRating = stashRating;
+    if (stats.total_matches >= 5 && performer.rating100) {
+      enhancedRating = `${rating} (${ratingInterval.low}-${ratingInterval.high})`;
+    }
+    
     // Handle numeric ranks and string ranks
     let rankDisplay = '';
     if (rank !== null && rank !== undefined) {
@@ -2339,9 +2552,9 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
     
     // Streak badge for gauntlet champion
-    let streakDisplay = '';
+    let streakBadgeDisplay = '';
     if (streak !== null && streak > 0) {
-      streakDisplay = `<div class="hon-streak-badge">🔥 ${streak} win${streak > 1 ? 's' : ''}</div>`;
+      streakBadgeDisplay = `<div class="hon-streak-badge">🔥 ${streak} win${streak > 1 ? 's' : ''}</div>`;
     }
 
     return `
@@ -2351,7 +2564,7 @@ async function fetchPerformerCount(performerFilter = {}) {
             ? `<img class="hon-performer-image hon-scene-image" src="${imagePath}" alt="${name}" loading="lazy" />`
             : `<div class="hon-performer-image hon-scene-image hon-no-image">No Image</div>`
           }
-          ${streakDisplay}
+          ${streakBadgeDisplay}
           <div class="hon-click-hint">Click to open performer</div>
         </div>
         
@@ -2367,7 +2580,8 @@ async function fetchPerformerCount(performerFilter = {}) {
               ${ethnicity ? `<div class="hon-meta-item"><strong>Ethnicity:</strong> ${ethnicity}</div>` : ''}
               ${country ? `<div class="hon-meta-item"><strong>Country:</strong> ${country}</div>` : ''}
               <div class="hon-meta-item"><strong>Scenes:</strong> ${sceneCount}</div>
-              <div class="hon-meta-item"><strong>Rating:</strong> ${stashRating}</div>
+              <div class="hon-meta-item"><strong>Rating:</strong> ${enhancedRating}</div>
+              ${statsDisplay}
             </div>
           </div>
           
@@ -2642,14 +2856,16 @@ async function fetchPerformerCount(performerFilter = {}) {
       ? ((performers.reduce((sum, p) => sum + (p.rating100 || 50), 0) / performerCount) / 10).toFixed(1) 
       : '5.0';
 
-    // Calculate rating distribution for bar graph (100 individual rating values: 0.0, 0.1, 0.2, ..., 9.9)
+    // Calculate rating distribution for bar graph (100 individual rating values: 0.1, 0.2, 0.3, ..., 10.0)
     // Create 100 buckets for granular distribution
     const ratingBuckets = Array(100).fill(0);
     performersWithStats.forEach(p => {
       const ratingValue = parseFloat(p.rating); // Rating is 0.0-10.0
       // Map rating to bucket index (0-99)
-      // Rating 10.0 goes into bucket 99 (displayed as 9.9)
-      const bucketIndex = Math.min(99, Math.floor(ratingValue * 10));
+      // Rating 0.1 goes into bucket 0 (displayed as 0.1)
+      // Rating 10.0 goes into bucket 99 (displayed as 10.0)
+      // Use Math.round to handle floating point precision, then subtract 1 to align with display labels
+      const bucketIndex = Math.max(0, Math.min(99, Math.round(ratingValue * 10) - 1));
       ratingBuckets[bucketIndex]++;
     });
     
@@ -2665,11 +2881,11 @@ async function fetchPerformerCount(performerFilter = {}) {
     // Use individual bucket max for expanded view scaling
     const maxBucketCount = Math.max(...ratingBuckets, 1);
     
-    // Group buckets into 10 collapsible groups (0.0-1.0, 1.0-2.0, ..., 9.0-10.0)
+    // Group buckets into 10 collapsible groups (0.1-1.0, 1.1-2.0, ..., 9.1-10.0)
     const barGraphGroups = [];
     for (let groupIndex = 0; groupIndex < 10; groupIndex++) {
-      const startRating = groupIndex;
-      const endRating = groupIndex + 1;
+      const startRating = (groupIndex * 10 + 1) / 10; // 0.1, 1.1, 2.1, ..., 9.1
+      const endRating = groupIndex + 1; // 1, 2, 3, ..., 10
       
       // Get buckets for this group (10 buckets per group)
       const groupBuckets = ratingBuckets.slice(groupIndex * 10, (groupIndex + 1) * 10);
@@ -2682,7 +2898,7 @@ async function fetchPerformerCount(performerFilter = {}) {
       const barsInGroup = groupBuckets.map((count, bucketIndexInGroup) => {
         const bucketIndex = groupIndex * 10 + bucketIndexInGroup;
         const percentage = (count / maxBucketCount) * 100;
-        const rangeStart = (bucketIndex / 10).toFixed(1);
+        const rangeStart = ((bucketIndex + 1) / 10).toFixed(1);
         const displayRange = `${rangeStart}`;
         
         return `
@@ -2699,9 +2915,9 @@ async function fetchPerformerCount(performerFilter = {}) {
       
       barGraphGroups.push(`
         <div class="hon-bar-group">
-          <div class="hon-bar-group-header" data-group="bar-${groupIndex}" role="button" aria-expanded="false" aria-controls="bar-group-${groupIndex}" aria-label="Toggle ratings ${startRating}.0 to ${endRating}.0 group">
+          <div class="hon-bar-group-header" data-group="bar-${groupIndex}" role="button" aria-expanded="false" aria-controls="bar-group-${groupIndex}" aria-label="Toggle ratings ${startRating.toFixed(1)} to ${endRating}.0 group">
             <span class="hon-group-toggle">▶</span>
-            <span class="hon-bar-group-label">${startRating}.0-${endRating}.0</span>
+            <span class="hon-bar-group-label">${startRating.toFixed(1)}-${endRating}.0</span>
             <div class="hon-bar-group-bar-wrapper">
               <div class="hon-bar-group-bar" style="width: ${groupPercentage}%">
                 <span class="hon-bar-group-bar-count">${groupTotal}</span>
@@ -3005,6 +3221,7 @@ async function fetchPerformerCount(performerFilter = {}) {
           </div>
           <div class="hon-actions">
             <button id="hon-skip-btn" class="btn btn-secondary">Skip (Get New Pair)</button>
+            <button id="hon-undo-btn" class="btn btn-secondary hon-undo-btn" style="display: none;" disabled>↩ Undo Last Battle</button>
             <div class="hon-keyboard-hint">
               <span>← Left Arrow</span> to choose left · 
               <span>→ Right Arrow</span> to choose right · 
@@ -3193,6 +3410,18 @@ async function fetchPerformerCount(performerFilter = {}) {
         skipBtn.style.opacity = disableSkip ? "0.5" : "1";
         skipBtn.style.cursor = disableSkip ? "not-allowed" : "pointer";
       }
+
+      // Show undo button when there is a previous battle to revert
+      const undoBtn = document.querySelector("#hon-undo-btn");
+      if (undoBtn) {
+        if (previousBattle) {
+          undoBtn.style.display = "";
+          undoBtn.disabled = false;
+          undoBtn.textContent = "↩ Undo Last Battle";
+        } else {
+          undoBtn.style.display = "none";
+        }
+      }
     } catch (error) {
       console.error("[HotOrNot] Error loading items:", error);
       comparisonArea.innerHTML = `
@@ -3204,9 +3433,175 @@ async function fetchPerformerCount(performerFilter = {}) {
     }
   }
 
+  /**
+   * Save the current battle state before a choice is processed (for undo support).
+   * Captures a deep copy of both items, ranks, mode, and gauntlet state.
+   */
+  function saveBattleState() {
+    previousBattle = {
+      left: structuredClone(currentPair.left),
+      right: structuredClone(currentPair.right),
+      ranks: { left: currentRanks.left, right: currentRanks.right },
+      mode: currentMode,
+      gauntletChampion: gauntletChampion ? structuredClone(gauntletChampion) : null,
+      gauntletWins: gauntletWins,
+      gauntletDefeated: [...gauntletDefeated],
+      gauntletFalling: gauntletFalling,
+      gauntletFallingItem: gauntletFallingItem ? structuredClone(gauntletFallingItem) : null,
+      gauntletFallingTested: [...gauntletFallingTested],
+    };
+  }
+
+  /**
+   * Restore a performer's rating and stats to a pre-battle snapshot.
+   * @param {string} performerId - The performer's ID
+   * @param {number} oldRating - The rating to restore
+   * @param {string|null} oldStats - Serialised hotornot_stats JSON string (or null if none)
+   */
+  async function restorePerformerState(performerId, oldRating, oldStats) {
+    const mutation = `
+      mutation RestorePerformerState($id: ID!, $rating: Int!, $fields: Map) {
+        performerUpdate(input: {
+          id: $id,
+          rating100: $rating,
+          custom_fields: {
+            partial: $fields
+          }
+        }) {
+          id
+          rating100
+          custom_fields
+        }
+      }
+    `;
+
+    const fields = oldStats !== null && oldStats !== undefined
+      ? { hotornot_stats: oldStats }
+      : {};
+
+    return await graphqlQuery(mutation, {
+      id: performerId,
+      rating: Math.round(oldRating),
+      fields
+    });
+  }
+
+  /**
+   * Undo the last battle: restore both items to their pre-battle state and
+   * re-show the same pair so the user can re-vote.
+   */
+  async function undoLastBattle() {
+    if (!previousBattle) return;
+
+    const undo = previousBattle;
+    previousBattle = null;
+
+    const undoBtn = document.getElementById("hon-undo-btn");
+    if (undoBtn) {
+      undoBtn.disabled = true;
+      undoBtn.textContent = "↩ Reverting...";
+    }
+
+    try {
+      if (battleType === "performers") {
+        const leftStats = undo.left.custom_fields && undo.left.custom_fields.hotornot_stats
+          ? undo.left.custom_fields.hotornot_stats : null;
+        const rightStats = undo.right.custom_fields && undo.right.custom_fields.hotornot_stats
+          ? undo.right.custom_fields.hotornot_stats : null;
+        await Promise.all([
+          restorePerformerState(undo.left.id, undo.left.rating100 || 50, leftStats),
+          restorePerformerState(undo.right.id, undo.right.rating100 || 50, rightStats)
+        ]);
+      } else if (battleType === "images") {
+        await Promise.all([
+          updateImageRating(undo.left.id, undo.left.rating100 || 50),
+          updateImageRating(undo.right.id, undo.right.rating100 || 50)
+        ]);
+      }
+
+      // Restore gauntlet/mode state
+      currentMode = undo.mode;
+      gauntletChampion = undo.gauntletChampion;
+      gauntletWins = undo.gauntletWins;
+      gauntletDefeated = undo.gauntletDefeated;
+      gauntletFalling = undo.gauntletFalling;
+      gauntletFallingItem = undo.gauntletFallingItem;
+      gauntletFallingTested = undo.gauntletFallingTested;
+
+      // Restore the pair objects (with original ratings)
+      currentPair.left = undo.left;
+      currentPair.right = undo.right;
+      currentRanks.left = undo.ranks.left;
+      currentRanks.right = undo.ranks.right;
+
+      // Re-render the comparison area with the same pair
+      const comparisonArea = document.getElementById("hon-comparison-area");
+      if (comparisonArea) {
+        let leftStreak = null;
+        let rightStreak = null;
+        if (currentMode === "gauntlet" || currentMode === "champion") {
+          if (gauntletChampion && undo.left.id === gauntletChampion.id) {
+            leftStreak = gauntletWins;
+          } else if (gauntletChampion && undo.right.id === gauntletChampion.id) {
+            rightStreak = gauntletWins;
+          }
+        }
+
+        comparisonArea.innerHTML = `
+          <div class="hon-vs-container">
+            ${(battleType === "performers" ? createPerformerCard : createImageCard)(undo.left, "left", undo.ranks.left, leftStreak)}
+            <div class="hon-vs-divider">
+              <span class="hon-vs-text">VS</span>
+            </div>
+            ${(battleType === "performers" ? createPerformerCard : createImageCard)(undo.right, "right", undo.ranks.right, rightStreak)}
+          </div>
+        `;
+
+        comparisonArea.querySelectorAll(".hon-scene-body").forEach((body) => {
+          body.addEventListener("click", handleChooseItem);
+        });
+
+        comparisonArea.querySelectorAll(".hon-scene-image-container").forEach((container) => {
+          const itemUrl = container.dataset.performerUrl || container.dataset.imageUrl;
+          container.addEventListener("click", () => {
+            if (itemUrl) window.open(itemUrl, "_blank");
+          });
+        });
+      }
+
+      // Update mode toggle button states
+      const modal = document.getElementById("hon-modal");
+      if (modal) {
+        modal.querySelectorAll(".hon-mode-btn").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.mode === currentMode);
+        });
+      }
+
+      disableChoice = false;
+
+      // Hide undo button — user can only undo one battle at a time
+      if (undoBtn) {
+        undoBtn.disabled = true;
+        undoBtn.style.display = "none";
+      }
+
+      console.log("[HotOrNot] Battle undone successfully");
+    } catch (err) {
+      console.error("[HotOrNot] Error undoing battle:", err);
+      // Restore previousBattle so the user can try again
+      previousBattle = undo;
+      if (undoBtn) {
+        undoBtn.disabled = false;
+        undoBtn.textContent = "↩ Undo Last Battle";
+      }
+    }
+  }
+
   async function handleChooseItem(event) {
     if(disableChoice) return;
     disableChoice = true;
+    // Save state BEFORE processing so the user can undo if they made a mistake
+    saveBattleState();
     const body = event.currentTarget;
     const winnerId = body.dataset.winner;
     const winnerCard = body.closest(".hon-scene-card");
@@ -3321,7 +3716,7 @@ async function fetchPerformerCount(performerFilter = {}) {
           // This ensures the performer doesn't drop too dramatically from a single loss
           const currentFallingRating = gauntletFallingItem.rating100 || 50;
           // Pass null for performer objects to prevent handleComparison from tracking stats internally
-          // Stats are manually tracked at lines 3346 and 3352 below to properly handle the floor calculation
+          // Stats are manually tracked below via updateItemRating calls to properly handle the floor calculation
           const { newLoserRating, loserChange } = await handleComparison(
             winnerId, gauntletFallingItem.id, winnerRating, currentFallingRating,
             null, /* loserRank - not needed for falling phase */
@@ -3401,7 +3796,7 @@ async function fetchPerformerCount(performerFilter = {}) {
         
         // If floor was applied (adjusted rating differs from ELO-calculated rating),
         // update the database to reflect the floor-adjusted rating.
-        // Note: handleComparison (called at line 3369) already tracked stats for this loss,
+        // Note: handleComparison already tracked stats for this loss,
         // so we pass null for performerObj to only update the rating without touching stats.
         if (adjustedLoserRating !== newLoserRating && battleType === "performers") {
           await updateItemRating(loserId, adjustedLoserRating, null, null);
@@ -3822,17 +4217,73 @@ async function fetchPerformerCount(performerFilter = {}) {
     return false;
   }
 
+  /**
+   * Attempt to inject the 🔥 HotOrNot button into Stash's top navigation bar.
+   * Tries several common Stash navbar CSS selectors in order of preference.
+   * @returns {boolean} True if the button was successfully injected, false if no navbar was found.
+   */
+function addNavbarButton() {
+    if (document.getElementById("hon-nav-btn")) return true;
+
+    // Try multiple selectors for Stash's navbar container (right-side area)
+    const navbarSelectors = [
+      ".top-nav .ms-auto",
+      ".navbar .ms-auto",
+      ".navbar-buttons",
+      ".top-nav",
+      ".navbar"
+    ];
+
+    let navbarContainer = null;
+    for (const selector of navbarSelectors) {
+      const found = document.querySelector(selector);
+      if (found) {
+        navbarContainer = found;
+        break;
+      }
+    }
+
+    if (!navbarContainer) return false;
+
+    const btn = document.createElement("button");
+    btn.id = "hon-nav-btn";
+    btn.innerHTML = "🔥";
+    btn.title = "HotOrNot";
+    btn.className = "hon-nav-btn";
+    btn.addEventListener("click", openRankingModal);
+    navbarContainer.appendChild(btn);
+    return true;
+  }
+
+  /**
+   * Add the HotOrNot launch button to the UI.
+   * Attempts navbar injection first; falls back to the original fixed floating button
+   * when no Stash navbar container can be located.
+   */
 function addFloatingButton() {
-    const existingBtn = document.getElementById("hon-floating-btn");
-    
-    // Remove button if we're not on the performers page
-    if (!shouldShowButton()) {
-      if (existingBtn) existingBtn.remove();
+    const existingNavBtn = document.getElementById("hon-nav-btn");
+    const existingFloatBtn = document.getElementById("hon-floating-btn");
+
+    // If navbar button already present, ensure no floating button
+    if (existingNavBtn) {
+      if (existingFloatBtn) existingFloatBtn.remove();
       return;
     }
-    
+
+    // Try to inject into navbar first
+    if (addNavbarButton()) {
+      if (existingFloatBtn) existingFloatBtn.remove();
+      return;
+    }
+
+    // Fall back to floating button (original behaviour)
+    if (!shouldShowButton()) {
+      if (existingFloatBtn) existingFloatBtn.remove();
+      return;
+    }
+
     // Don't add duplicate
-    if (existingBtn) return;
+    if (existingFloatBtn) return;
 
     const btn = document.createElement("button");
     btn.id = "hon-floating-btn";
@@ -3923,6 +4374,8 @@ function addFloatingButton() {
           gauntletFalling = false;
           gauntletFallingItem = null;
           gauntletFallingTested = [];
+          // Clear undo state on mode change (previous battle is no longer valid)
+          previousBattle = null;
           
           // Update button states
           modal.querySelectorAll(".hon-mode-btn").forEach((b) => {
@@ -3976,6 +4429,14 @@ function addFloatingButton() {
     if (statsBtn) {
       statsBtn.addEventListener("click", () => {
         openStatsModal();
+      });
+    }
+
+    // Undo button
+    const undoBtn = modal.querySelector("#hon-undo-btn");
+    if (undoBtn) {
+      undoBtn.addEventListener("click", () => {
+        undoLastBattle();
       });
     }
 
@@ -4053,6 +4514,8 @@ function addFloatingButton() {
   function closeRankingModal() {
     const modal = document.getElementById("hon-modal");
     if (modal) modal.remove();
+    // Clear undo state when modal closes
+    previousBattle = null;
   }
 
   // ============================================
@@ -4118,9 +4581,642 @@ function addFloatingButton() {
     }
   }
 
+  // ============================================
+  // PERFORMER CARD STAR RATING WIDGET
+  // (Integrated from rating plugin)
+  // ============================================
+  
+  // Local cache for ratings to ensure UI stays in sync across React re-renders
+  // Map<performerId, { rating100: number|null, timestamp: number }>
+  const ratingsCache = new Map();
+  
+  // Cache TTL in milliseconds (5 minutes) - after this, we'll re-fetch from server
+  const RATINGS_CACHE_TTL = 5 * 60 * 1000;
+  
+  /**
+   * Get a rating from the local cache
+   * @param {string} performerId - Performer ID
+   * @returns {number|null|undefined} Cached rating, or undefined if not cached or expired
+   */
+  function getCachedRatingForWidget(performerId) {
+    const cached = ratingsCache.get(performerId);
+    if (!cached) return undefined;
+    
+    // Check if cache entry is still valid
+    if (Date.now() - cached.timestamp > RATINGS_CACHE_TTL) {
+      ratingsCache.delete(performerId);
+      return undefined;
+    }
+    
+    return cached.rating100;
+  }
+  
+  /**
+   * Set a rating in the local cache
+   * @param {string} performerId - Performer ID
+   * @param {number|null} rating100 - Rating value
+   */
+  function setCachedRatingForWidget(performerId, rating100) {
+    ratingsCache.set(performerId, {
+      rating100,
+      timestamp: Date.now()
+    });
+  }
+  
+  /**
+   * Update performer rating via GraphQL (simple version for star widget)
+   * @param {string} performerId - The performer's ID
+   * @param {number} rating100 - Rating value (0-100)
+   * @returns {Promise<Object>} Updated performer data
+   */
+  async function updatePerformerRatingSimple(performerId, rating100) {
+    const mutation = `
+      mutation UpdatePerformerRating($id: ID!, $rating: Int!) {
+        performerUpdate(input: {
+          id: $id,
+          rating100: $rating
+        }) {
+          id
+          rating100
+        }
+      }
+    `;
+
+    const result = await graphqlQuery(mutation, {
+      id: performerId,
+      rating: Math.max(0, Math.min(100, Math.round(rating100)))
+    });
+
+    const updatedRating = result.performerUpdate.rating100;
+    
+    // Update the local cache so React re-renders use the correct value
+    setCachedRatingForWidget(performerId, updatedRating);
+    
+    console.log(`[HotOrNot] Updated performer ${performerId} rating to ${updatedRating}`);
+    
+    // Dispatch custom event so all rating widgets for this performer can update
+    document.dispatchEvent(new CustomEvent("performer:rating:updated", {
+      detail: { performerId, rating100: updatedRating }
+    }));
+    
+    return result.performerUpdate;
+  }
+  
+  /**
+   * Get performer rating by ID
+   * Uses local cache for recently updated ratings to ensure UI consistency
+   * @param {string} performerId - The performer's ID
+   * @returns {Promise<number|null>} Rating value or null if not rated
+   */
+  async function getPerformerRatingForWidget(performerId) {
+    // Check the cache first
+    const cachedRating = getCachedRatingForWidget(performerId);
+    if (cachedRating !== undefined) {
+      return cachedRating;
+    }
+    
+    const query = `
+      query GetPerformerRating($id: ID!) {
+        findPerformer(id: $id) {
+          id
+          rating100
+        }
+      }
+    `;
+
+    const result = await graphqlQuery(query, { id: performerId });
+    const rating = result.findPerformer ? result.findPerformer.rating100 : null;
+    
+    // Cache the fetched rating
+    setCachedRatingForWidget(performerId, rating);
+    
+    return rating;
+  }
+  
+  /**
+   * Get multiple performer ratings in a single request
+   * Uses local cache for recently updated ratings to ensure UI consistency
+   * @param {string[]} performerIds - Array of performer IDs
+   * @returns {Promise<Map<string, number|null>>} Map of performer ID to rating
+   */
+  async function getMultiplePerformerRatingsForWidget(performerIds) {
+    if (performerIds.length === 0) {
+      return new Map();
+    }
+
+    const ratings = new Map();
+    const uncachedIds = [];
+    
+    // First, check the cache for each performer
+    for (const id of performerIds) {
+      const cachedRating = getCachedRatingForWidget(id);
+      if (cachedRating !== undefined) {
+        ratings.set(id, cachedRating);
+      } else {
+        uncachedIds.push(id);
+      }
+    }
+    
+    // If all ratings were cached, return immediately
+    if (uncachedIds.length === 0) {
+      return ratings;
+    }
+
+    // Build a query that fetches only uncached performers
+    // GraphQL aliases allow us to query the same field multiple times with different arguments
+    const aliasedQueries = uncachedIds.map((id, index) => 
+      `p${index}: findPerformer(id: "${id}") { id rating100 }`
+    ).join("\n");
+
+    const query = `query GetMultiplePerformerRatings { ${aliasedQueries} }`;
+
+    try {
+      const result = await graphqlQuery(query, {});
+      
+      uncachedIds.forEach((id, index) => {
+        const performer = result[`p${index}`];
+        const rating = performer ? performer.rating100 : null;
+        ratings.set(id, rating);
+        // Cache the fetched rating
+        setCachedRatingForWidget(id, rating);
+      });
+      
+      return ratings;
+    } catch (err) {
+      console.error("[HotOrNot] Error fetching multiple ratings:", err);
+      // Log which performers couldn't be fetched
+      if (uncachedIds.length > 0) {
+        console.warn(`[HotOrNot] Failed to fetch ratings for performers: ${uncachedIds.join(", ")}`);
+      }
+      // Return what we have from cache (may be partial)
+      return ratings;
+    }
+  }
+
+  /**
+   * Create a star rating widget
+   * @param {number|null} currentRating - Current rating100 value (0-100) or null
+   * @param {string} performerId - Performer ID for updates
+   * @returns {HTMLElement} Star rating container element
+   */
+  function createStarRatingWidget(currentRating, performerId) {
+    const container = document.createElement("div");
+    container.className = "hon-star-rating";
+    container.dataset.performerId = performerId;
+    // Store the current rating in dataset so it can be updated
+    container.dataset.currentRating = currentRating !== null ? currentRating : "";
+
+    // Convert rating100 to 10-star scale (0-100 -> 0-10)
+    const starValue = currentRating !== null ? currentRating / 10 : 0;
+    const fullStars = Math.floor(starValue);
+    const hasHalfStar = starValue - fullStars >= 0.5;
+
+    // Create 10 stars
+    for (let i = 1; i <= 10; i++) {
+      const star = document.createElement("span");
+      star.className = "hon-star";
+      star.dataset.value = i;
+
+      if (i <= fullStars) {
+        star.classList.add("hon-star-filled");
+        star.innerHTML = "★";
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        star.classList.add("hon-star-half");
+        star.innerHTML = "★";
+      } else {
+        star.classList.add("hon-star-empty");
+        star.innerHTML = "☆";
+      }
+
+      // Click handler for rating
+      star.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const newStarValue = parseInt(star.dataset.value);
+        const newRating100 = newStarValue * 10; // Convert back to rating100
+        
+        try {
+          await updatePerformerRatingSimple(performerId, newRating100);
+          // Update the stored rating in dataset
+          container.dataset.currentRating = newRating100;
+          updateStarWidgetDisplay(container, newRating100);
+          showStarRatingFeedback(container);
+          // Update any native Stash rating displays on the card
+          const parentCard = findParentCardForWidget(container);
+          updateNativeRatingDisplayOnCard(parentCard, newRating100);
+        } catch (err) {
+          console.error("[HotOrNot] Failed to update rating:", err);
+          showStarRatingError(container);
+        }
+      });
+
+      // Hover effects
+      star.addEventListener("mouseenter", () => {
+        previewStarWidgetHover(container, parseInt(star.dataset.value));
+      });
+
+      container.appendChild(star);
+    }
+
+    // Reset hover preview when mouse leaves - use stored rating from dataset
+    container.addEventListener("mouseleave", () => {
+      const storedRating = container.dataset.currentRating;
+      const ratingValue = storedRating !== "" ? parseInt(storedRating) : null;
+      updateStarWidgetDisplay(container, ratingValue);
+    });
+
+    // Prevent card click when interacting with rating
+    container.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    return container;
+  }
+
+  /**
+   * Update star display based on rating
+   * @param {HTMLElement} container - Star rating container
+   * @param {number|null} rating100 - Rating value (0-100) or null
+   */
+  function updateStarWidgetDisplay(container, rating100) {
+    const stars = container.querySelectorAll(".hon-star");
+    const starValue = rating100 !== null ? rating100 / 10 : 0;
+    const fullStars = Math.floor(starValue);
+    const hasHalfStar = starValue - fullStars >= 0.5;
+
+    stars.forEach((star, index) => {
+      const value = index + 1;
+      star.classList.remove("hon-star-filled", "hon-star-half", "hon-star-empty", "hon-star-preview");
+
+      if (value <= fullStars) {
+        star.classList.add("hon-star-filled");
+        star.innerHTML = "★";
+      } else if (value === fullStars + 1 && hasHalfStar) {
+        star.classList.add("hon-star-half");
+        star.innerHTML = "★";
+      } else {
+        star.classList.add("hon-star-empty");
+        star.innerHTML = "☆";
+      }
+    });
+  }
+
+  /**
+   * Preview star hover state
+   * @param {HTMLElement} container - Star rating container
+   * @param {number} hoverValue - Star value being hovered (1-10)
+   */
+  function previewStarWidgetHover(container, hoverValue) {
+    const stars = container.querySelectorAll(".hon-star");
+    stars.forEach((star, index) => {
+      const value = index + 1;
+      star.classList.remove("hon-star-preview");
+      if (value <= hoverValue) {
+        star.classList.add("hon-star-preview");
+        star.innerHTML = "★";
+      } else {
+        // Reset non-hovered stars to empty state
+        star.innerHTML = "☆";
+      }
+    });
+  }
+
+  /**
+   * Show brief feedback after rating update
+   * @param {HTMLElement} container - Star rating container
+   */
+  function showStarRatingFeedback(container) {
+    // Add visual feedback to the container
+    container.classList.add("hon-feedback-success");
+    setTimeout(() => {
+      container.classList.remove("hon-feedback-success");
+    }, 500);
+  }
+
+  /**
+   * Show error feedback after failed rating update
+   * @param {HTMLElement} container - Star rating container
+   */
+  function showStarRatingError(container) {
+    // Add visual feedback to the container
+    container.classList.add("hon-feedback-error");
+    setTimeout(() => {
+      container.classList.remove("hon-feedback-error");
+    }, 1000);
+  }
+
+  /**
+   * Extract performer ID from a performer card element
+   * @param {HTMLElement} card - Performer card element
+   * @returns {string|null} Performer ID or null
+   */
+  function getPerformerIdFromCard(card) {
+    // Try getting from card's link href (e.g., /performers/123)
+    const link = card.querySelector("a[href*='/performers/']");
+    if (link) {
+      const href = link.getAttribute("href");
+      const match = href.match(/\/performers\/(\d+)/);
+      if (match) {
+        return match[1];
+      }
+    }
+
+    // Try data attributes
+    if (card.dataset.performerId) {
+      return card.dataset.performerId;
+    }
+
+    return null;
+  }
+
+  /**
+   * Update Stash's native rating display elements on the card
+   * This ensures all rating displays are synchronized after a rating change
+   * @param {HTMLElement} card - Performer card element
+   * @param {number} rating100 - New rating value (0-100)
+   */
+  function updateNativeRatingDisplayOnCard(card, rating100) {
+    if (!card) return;
+    
+    // Find and update any native Stash rating elements on the card
+    // Look for common Stash rating element patterns
+    const ratingSelectors = [
+      ".rating-number",
+      ".rating-value",
+      ".rating-display",
+      "[class*='rating'][class*='number']",
+      "[class*='rating'][class*='value']"
+    ];
+    
+    // Try specific selectors first for better performance
+    let ratingElements = [];
+    for (const selector of ratingSelectors) {
+      const found = card.querySelectorAll(selector);
+      if (found.length > 0) {
+        ratingElements = Array.from(found);
+        break;
+      }
+    }
+    
+    // Fallback to broader selector if no specific elements found
+    if (ratingElements.length === 0) {
+      ratingElements = Array.from(card.querySelectorAll("[class*='rating']"));
+    }
+    
+    ratingElements.forEach(el => {
+      // Skip our plugin's rating widget
+      if (el.classList.contains("hon-star-rating") || 
+          el.closest(".hon-star-rating")) {
+        return;
+      }
+      
+      // Update the text content if it contains a valid rating number (0-100)
+      const text = el.textContent.trim();
+      // Match numbers that could be ratings (1-3 digits, standalone or at start/end)
+      const match = text.match(/^(\d{1,3})$|^(\d{1,3})\/|\/(\d{1,3})$/);
+      if (match) {
+        // Get the matched number (from any of the capture groups)
+        const matchedNumber = match[1] || match[2] || match[3];
+        const numericValue = parseInt(matchedNumber, 10);
+        // Only update if the number is in valid rating range
+        if (numericValue >= 0 && numericValue <= 100) {
+          el.textContent = text.replace(matchedNumber, rating100.toString());
+        }
+      }
+    });
+  }
+
+  /**
+   * Find the parent card element containing the rating widget
+   * @param {HTMLElement} container - The rating widget container
+   * @returns {HTMLElement|null} The parent card element or null
+   */
+  function findParentCardForWidget(container) {
+    // Walk up the DOM tree to find the performer card
+    let element = container.parentElement;
+    while (element) {
+      // Check for common card class names first (fast)
+      if (element.classList.contains("performer-card") ||
+          element.classList.contains("card")) {
+        return element;
+      }
+      // Check for direct link as child (faster than querySelector)
+      const children = element.children;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child.tagName === "A" && 
+            child.href && 
+            child.href.includes("/performers/")) {
+          return element;
+        }
+      }
+      element = element.parentElement;
+    }
+    return null;
+  }
+
+  /**
+   * Check if rating widget already exists on card
+   * @param {HTMLElement} card - Performer card element
+   * @returns {boolean} True if widget exists
+   */
+  function hasStarRatingWidget(card) {
+    return card.querySelector(".hon-star-rating") !== null;
+  }
+
+  /**
+   * Inject rating widget into performer card
+   * @param {HTMLElement} card - Performer card element
+   * @param {number|null} rating - Pre-fetched rating value (optional)
+   */
+  async function injectStarRatingWidget(card, rating = undefined) {
+    if (hasStarRatingWidget(card)) {
+      return;
+    }
+
+    const performerId = getPerformerIdFromCard(card);
+    if (!performerId) {
+      console.warn("[HotOrNot] Could not get performer ID from card");
+      return;
+    }
+
+    try {
+      // Fetch current rating from API if not provided
+      if (rating === undefined) {
+        rating = await getPerformerRatingForWidget(performerId);
+      }
+      
+      // Create and inject the widget
+      const ratingWidget = createStarRatingWidget(rating, performerId);
+      
+      // Find the best place to inject (after the image, before other content)
+      const cardContent = card.querySelector(".performer-card-content") || 
+                         card.querySelector(".card-section") ||
+                         card.querySelector(".card-body") ||
+                         card;
+      
+      // Try to insert at the beginning of the card content
+      if (cardContent.firstChild) {
+        cardContent.insertBefore(ratingWidget, cardContent.firstChild);
+      } else {
+        cardContent.appendChild(ratingWidget);
+      }
+
+      // Mark card as processed
+      card.dataset.honRatingProcessed = "true";
+    } catch (err) {
+      console.error("[HotOrNot] Error injecting rating widget:", err);
+    }
+  }
+
+  /**
+   * Process all performer cards on the page for star rating widgets
+   */
+  async function processPerformerCardsForRating() {
+    // Various selectors for performer cards in Stash UI
+    const cardSelectors = [
+      ".performer-card",
+      "[class*='PerformerCard']",
+      ".card.performer",
+      ".grid-item.performer"
+    ];
+
+    let cards = [];
+    for (const selector of cardSelectors) {
+      const found = document.querySelectorAll(selector);
+      if (found.length > 0) {
+        cards = Array.from(found);
+        break;
+      }
+    }
+
+    // Alternative: look for cards that have performer links
+    if (cards.length === 0) {
+      const allCards = document.querySelectorAll(".card");
+      cards = Array.from(allCards).filter(card => {
+        const link = card.querySelector("a[href*='/performers/']");
+        return link !== null;
+      });
+    }
+
+    // Filter to only unprocessed cards
+    const unprocessedCards = cards.filter(card => !card.dataset.honRatingProcessed);
+    if (unprocessedCards.length === 0) {
+      return;
+    }
+
+    // Collect performer IDs for batch query
+    const cardIdMap = new Map(); // performerId -> card
+    for (const card of unprocessedCards) {
+      const performerId = getPerformerIdFromCard(card);
+      if (performerId) {
+        cardIdMap.set(performerId, card);
+      }
+    }
+
+    const performerIds = Array.from(cardIdMap.keys());
+    if (performerIds.length === 0) {
+      return;
+    }
+
+    try {
+      // Fetch all ratings in a single batch query
+      const ratings = await getMultiplePerformerRatingsForWidget(performerIds);
+      
+      // Inject widgets for each card in parallel
+      const widgetPromises = Array.from(cardIdMap.entries()).map(([performerId, card]) => {
+        const rating = ratings.get(performerId);
+        return injectStarRatingWidget(card, rating);
+      });
+      await Promise.all(widgetPromises);
+    } catch (err) {
+      console.error("[HotOrNot] Error processing cards in batch:", err);
+      // Fallback to individual processing (also parallelized)
+      await Promise.all(unprocessedCards.map(card => injectStarRatingWidget(card)));
+    }
+  }
+
+  /**
+   * Check if we're on the performers list page
+   * @returns {boolean} True if on performers list page
+   */
+  function isPerformersListPage() {
+    const path = window.location.pathname;
+    return path === "/performers" || path === "/performers/" || path.startsWith("/performers?");
+  }
+
+  // Debounce timeout for star rating processing
+  let starRatingProcessingTimeout = null;
+
+  /**
+   * Initialize star rating widgets
+   */
+  function initStarRatingWidgets() {
+    console.log("[HotOrNot] Star rating widgets initialized");
+
+    // Global event listener for rating updates (event delegation pattern)
+    // This avoids memory leaks from per-widget listeners
+    document.addEventListener("performer:rating:updated", (e) => {
+      const { performerId, rating100 } = e.detail;
+      // Find all rating widgets for this performer
+      const widgets = document.querySelectorAll(`.hon-star-rating[data-performer-id="${performerId}"]`);
+      widgets.forEach((container) => {
+        container.dataset.currentRating = rating100 !== null ? rating100 : "";
+        updateStarWidgetDisplay(container, rating100);
+        // Update native Stash rating displays on the associated card
+        const parentCard = findParentCardForWidget(container);
+        updateNativeRatingDisplayOnCard(parentCard, rating100);
+      });
+    });
+
+    // Initial processing if on performers list page
+    if (isPerformersListPage()) {
+      // Delay to allow Stash UI to render
+      setTimeout(() => {
+        processPerformerCardsForRating();
+      }, 1000);
+    }
+
+    // Watch for DOM changes (SPA navigation, lazy loading, etc.)
+    const ratingObserver = new MutationObserver(() => {
+      if (!isPerformersListPage()) {
+        return;
+      }
+
+      // Debounce processing
+      clearTimeout(starRatingProcessingTimeout);
+      starRatingProcessingTimeout = setTimeout(() => {
+        processPerformerCardsForRating();
+      }, 500);
+    });
+
+    ratingObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Listen for Stash navigation events if PluginApi is available
+    if (typeof PluginApi !== "undefined" && PluginApi.Event && PluginApi.Event.addEventListener) {
+      PluginApi.Event.addEventListener("stash:location", () => {
+        if (isPerformersListPage()) {
+          // Delay to allow UI to render
+          setTimeout(() => {
+            processPerformerCardsForRating();
+          }, 500);
+        }
+      });
+    }
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", () => {
+      init();
+      initStarRatingWidgets();
+    });
   } else {
     init();
+    initStarRatingWidgets();
   }
 })();
