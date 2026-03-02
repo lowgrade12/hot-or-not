@@ -2,6 +2,8 @@
 
 A plugin for [Stash](https://stashapp.cc/) that uses an ELO-style rating system to rank performers and images through head-to-head comparisons.
 
+> **Looking for v2?** See [`plugins/hotOrNotV2`](plugins/hotOrNotV2/README.md) for the latest version with star rating widgets, undo support, advanced statistics, and more.
+
 ## Features
 
 **Comparison Modes:**
