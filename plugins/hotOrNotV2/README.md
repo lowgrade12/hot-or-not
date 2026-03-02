@@ -64,14 +64,14 @@ Respects the current page's filter criteria when launched from a filtered perfor
 
 ### User Interface
 
-- **Navbar fire button** launch Swiss mode from anywhere
-- **Performer Gauntlet** launch from performer page to start Gauntlet with that performer
+- **Floating action button** on performer pages to launch the comparison modal
 - **Battle rank badge** on individual performer pages showing their rank position (e.g., "#5 of 100")
 - **Star rating widget** on performer cards in the grid view for quick inline rating
 - **Side-by-side comparison** with performer images and metadata
 - **Visual feedback** showing rating changes after each choice
 - **Keyboard shortcuts**: Left Arrow (choose left), Right Arrow (choose right), Escape (close)
 - **Responsive design** that works on desktop and mobile
+- **Video preview on hover** for performers with preview clips
 
 ### Star Rating Widget
 
@@ -81,7 +81,6 @@ On the performers list page, each performer card displays a 10-star rating widge
 - **Real-time updates** - Changes are saved immediately to Stash
 - **Smart caching** - Batch fetches ratings for performance with 5-minute TTL
 - **Native sync** - Updates Stash's native rating displays when you change a rating
-- Toggle on/off via **Settings → Plugins → HotOrNotV2 → Show Star Rating Widget** (enabled by default)
 
 ### Battle Rank Badge
 
@@ -89,11 +88,10 @@ When viewing a single performer's page, a badge displays their battle rank:
 - Shows rank position and total performers (e.g., "Battle Rank #5 of 100")
 - Tier-based styling: 👑 Legendary (top 5%), 🥇 Gold (top 20%), 🥈 Silver (top 40%), 🥉 Bronze (top 60%), 🔥 Default
 - Hover for tooltip showing exact rating
-- Toggle on/off via **Settings → Plugins → HotOrNotV2 → Show Battle Rank Badge** (enabled by default)
 
 ## Installation
 
-1. Download the `/plugins/hotOrNot_v2/` folder to your Stash plugins directory
+1. Download the `/plugins/hotOrNotV2/` folder to your Stash plugins directory
 2. Reload plugins in Stash (Settings → Plugins → Reload)
 3. Navigate to the Performers page to see the floating HotOrNot button and star rating widgets on performer cards
 
