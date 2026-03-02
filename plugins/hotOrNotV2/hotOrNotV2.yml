@@ -7,3 +7,12 @@ ui:
     - hotOrNotV2.js
   css:
     - hotOrNotV2.css
+settings:
+  showBattleRankBadge:
+    displayName: Show Battle Rank Badge
+    description: Show a rank badge on individual performer pages. Enabled by default.
+    type: BOOLEAN
+  showStarRatingWidget:
+    displayName: Show Star Rating Widget
+    description: Show a star rating widget on performer cards. Enabled by default.
+    type: BOOLEAN

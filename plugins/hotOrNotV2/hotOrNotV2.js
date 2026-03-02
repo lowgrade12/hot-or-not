@@ -18,6 +18,54 @@
   let cachedUrlFilter = null; // Cache the URL filter when modal is opened
   let badgeInjectionInProgress = false; // Flag to prevent concurrent badge injections
   let previousBattle = null; // Stores pre-battle state for undo functionality
+  let pluginConfigCache = null; // Cached plugin configuration from Stash settings
+
+  /**
+   * Fetch the HotOrNotV2 plugin configuration from Stash settings.
+   * Caches the result to avoid repeated GraphQL calls.
+   * @returns {Promise<Object>} Plugin config object (may be empty if not yet configured)
+   */
+  async function getHotOrNotConfig() {
+    if (pluginConfigCache !== null) {
+      return pluginConfigCache;
+    }
+    try {
+      const result = await graphqlQuery(`
+        query Configuration {
+          configuration {
+            plugins
+          }
+        }
+      `);
+      pluginConfigCache = (result.configuration.plugins || {})["hotOrNotV2"] || {};
+    } catch (e) {
+      console.error("[HotOrNot] Failed to fetch plugin config:", e);
+      pluginConfigCache = {};
+    }
+    return pluginConfigCache;
+  }
+
+  /**
+   * Returns true if the battle rank badge is enabled.
+   * Reads from Stash plugin settings; defaults to true when not explicitly set to false.
+   * @returns {Promise<boolean>}
+   */
+  async function isBattleRankBadgeEnabled() {
+    const config = await getHotOrNotConfig();
+    // Default to true if the setting has never been changed
+    return config.showBattleRankBadge !== false;
+  }
+
+  /**
+   * Returns true if the star rating widget is enabled.
+   * Reads from Stash plugin settings; defaults to true when not explicitly set to false.
+   * @returns {Promise<boolean>}
+   */
+  async function isStarRatingWidgetEnabled() {
+    const config = await getHotOrNotConfig();
+    // Default to true if the setting has never been changed
+    return config.showStarRatingWidget !== false;
+  }
 
   // GraphQL filter modifier constants
   // Array-based modifiers require value_list field for enum-based criterion inputs
@@ -4104,6 +4152,10 @@ async function fetchPerformerCount(performerFilter = {}) {
    * Looks for the rating stars section and adds the badge next to it.
    */
   async function injectBattleRankBadge() {
+    // Skip injection if the user has disabled the battle rank badge in Stash settings
+    if (!await isBattleRankBadgeEnabled()) {
+      return;
+    }
     // Use compare-and-set pattern with global flag to prevent concurrent injections
     // This handles both same-plugin races and cross-plugin races
     // In JavaScript's single-threaded event loop, this synchronous block before any await is atomic
@@ -4553,8 +4605,15 @@ function addFloatingButton() {
       PluginApi.Event.addEventListener("stash:location", (e) => {
         console.log("[HotOrNot] Page changed:", e.detail.data.location.pathname);
         
-        // Update cached filter when on performers page
         const path = e.detail.data.location.pathname;
+
+        // Invalidate plugin config cache when navigating away from Settings,
+        // so the badge respects any changes the user made.
+        if (path !== '/settings') {
+          pluginConfigCache = null;
+        }
+
+        // Update cached filter when on performers page
         if (path === '/performers' || path === '/performers/') {
           // Parse current filters from URL
           const newFilter = getUrlPerformerFilter();
@@ -5153,7 +5212,11 @@ function addFloatingButton() {
   /**
    * Initialize star rating widgets
    */
-  function initStarRatingWidgets() {
+  async function initStarRatingWidgets() {
+    if (!(await isStarRatingWidgetEnabled())) {
+      console.log("[HotOrNot] Star rating widget disabled via settings");
+      return;
+    }
     console.log("[HotOrNot] Star rating widgets initialized");
 
     // Global event listener for rating updates (event delegation pattern)
