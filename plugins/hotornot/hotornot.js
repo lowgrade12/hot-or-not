@@ -28,6 +28,28 @@
   // ============================================
 
   async function graphqlQuery(query, variables = {}) {
+    // Use Stash's Apollo client when available (preferred method for Stash plugins)
+    // This ensures authentication is handled automatically and avoids Apollo context errors
+    if (
+      typeof PluginApi !== "undefined" &&
+      PluginApi.utils &&
+      PluginApi.utils.StashService &&
+      typeof PluginApi.utils.StashService.getClient === "function" &&
+      PluginApi.libraries &&
+      PluginApi.libraries.Apollo
+    ) {
+      const { gql } = PluginApi.libraries.Apollo;
+      const client = PluginApi.utils.StashService.getClient();
+      const doc = gql(query);
+      const isMutation = doc.definitions.some(
+        (def) => def.kind === "OperationDefinition" && def.operation === "mutation"
+      );
+      const result = isMutation
+        ? await client.mutate({ mutation: doc, variables })
+        : await client.query({ query: doc, variables, fetchPolicy: "no-cache" });
+      return result.data;
+    }
+    // Fallback: direct fetch (for environments where PluginApi is not available)
     const response = await fetch("/graphql", {
       method: "POST",
       headers: {
