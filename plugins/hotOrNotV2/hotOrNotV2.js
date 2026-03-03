@@ -3696,10 +3696,18 @@ async function fetchPerformerCount(performerFilter = {}) {
       if (gauntletFalling && gauntletFallingItem) {
         if (winnerId === gauntletFallingItem.id) {
           // Falling item won - found their floor!
-          // Simple placement: place them just above the person they beat
+          // Place them just above the person they beat, but also:
+          //   - no lower than the floor from already-beaten opponents
+          //   - no higher than the champion who knocked them down
           
-          // Final rating is just above the loser they beat
-          const finalRating = Math.min(100, loserRating + 1);
+          // Raw placement: just above the loser they beat
+          const rawFinalRating = Math.min(100, loserRating + 1);
+          // Apply floor (can't drop below already-beaten performers)
+          const ratingFloor = await calculateDefeatedOpponentsFloor(gauntletDefeated);
+          // Apply ceiling (must stay below the champion who beat them)
+          const championRating = gauntletChampion ? (gauntletChampion.rating100 ?? null) : null;
+          const winnerCeiling = championRating !== null ? Math.max(1, championRating - 1) : 100;
+          const finalRating = Math.min(winnerCeiling, Math.max(rawFinalRating, ratingFloor));
           
           // Fetch all performers to calculate rank for display
           const performerFilter = getPerformerFilter();
@@ -3775,8 +3783,10 @@ async function fetchPerformerCount(performerFilter = {}) {
           // Calculate floor based on defeated opponents - can't drop below the highest-rated defeated performer
           const ratingFloor = await calculateDefeatedOpponentsFloor(gauntletDefeated);
           
-          // Apply the floor - can't drop below performers already beaten
-          const newFallingRating = Math.max(ratingFloor, newLoserRating);
+          // Apply floor but cap below the champion - falling performer must stay below whoever knocked them down
+          const championRating = gauntletChampion ? (gauntletChampion.rating100 ?? null) : null;
+          const winnerCeiling = championRating !== null ? Math.max(1, championRating - 1) : 100;
+          const newFallingRating = Math.min(winnerCeiling, Math.max(ratingFloor, newLoserRating));
           
           // Fetch latest performer data to get current stats before updating (parallel fetch for performance)
           let freshFallingPerformer = gauntletFallingItem;
@@ -3836,14 +3846,15 @@ async function fetchPerformerCount(performerFilter = {}) {
         // Calculate floor based on defeated opponents - can't drop below the highest-rated defeated performer
         const ratingFloor = await calculateDefeatedOpponentsFloor(gauntletDefeated);
         
-        // Apply the floor - can't drop below performers already beaten
-        const adjustedLoserRating = Math.max(ratingFloor, newLoserRating);
+        // Apply floor but cap below the winner - loser must rank below whoever beat them
+        const winnerCeiling = Math.max(1, newWinnerRating - 1);
+        const adjustedLoserRating = Math.min(winnerCeiling, Math.max(ratingFloor, newLoserRating));
         
-        // Update the falling item's rating with floor applied
+        // Update the falling item's rating with floor and ceiling applied
         gauntletFallingItem.rating100 = adjustedLoserRating;
         
-        // If floor was applied (adjusted rating differs from ELO-calculated rating),
-        // update the database to reflect the floor-adjusted rating.
+        // If adjusted rating differs from ELO-calculated rating,
+        // update the database to reflect the adjusted rating.
         // Note: handleComparison already tracked stats for this loss,
         // so we pass null for performerObj to only update the rating without touching stats.
         if (adjustedLoserRating !== newLoserRating && battleType === "performers") {
