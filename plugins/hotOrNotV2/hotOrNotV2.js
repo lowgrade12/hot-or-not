@@ -74,10 +74,135 @@
   const ARRAY_BASED_MODIFIERS = new Set(['INCLUDES', 'EXCLUDES', 'INCLUDES_ALL']);
 
   // ============================================
+  // COUNTRY DISPLAY HELPER
+  // ============================================
+
+  // ISO 3166-1 alpha-2 country code to full country name lookup table.
+  // Names match the i18n-iso-countries English locale used by Stash (first alias when multiple exist).
+  const COUNTRY_NAMES = {
+    "AF": "Afghanistan", "AX": "Åland Islands", "AL": "Albania", "DZ": "Algeria",
+    "AS": "American Samoa", "AD": "Andorra", "AO": "Angola", "AI": "Anguilla",
+    "AQ": "Antarctica", "AG": "Antigua and Barbuda", "AR": "Argentina", "AM": "Armenia",
+    "AW": "Aruba", "AU": "Australia", "AT": "Austria", "AZ": "Azerbaijan",
+    "BS": "Bahamas", "BH": "Bahrain", "BD": "Bangladesh", "BB": "Barbados",
+    "BY": "Belarus", "BE": "Belgium", "BZ": "Belize", "BJ": "Benin", "BM": "Bermuda",
+    "BT": "Bhutan", "BO": "Bolivia", "BQ": "Bonaire, Sint Eustatius and Saba",
+    "BA": "Bosnia and Herzegovina", "BW": "Botswana", "BV": "Bouvet Island",
+    "BR": "Brazil", "IO": "British Indian Ocean Territory", "BN": "Brunei Darussalam",
+    "BG": "Bulgaria", "BF": "Burkina Faso", "BI": "Burundi", "KH": "Cambodia",
+    "CM": "Cameroon", "CA": "Canada", "CV": "Cape Verde", "KY": "Cayman Islands",
+    "CF": "Central African Republic", "TD": "Chad", "CL": "Chile",
+    "CN": "People's Republic of China", "CX": "Christmas Island",
+    "CC": "Cocos (Keeling) Islands", "CO": "Colombia", "KM": "Comoros",
+    "CG": "Republic of the Congo", "CD": "Democratic Republic of the Congo",
+    "CK": "Cook Islands", "CR": "Costa Rica", "CI": "Cote d'Ivoire", "HR": "Croatia",
+    "CU": "Cuba", "CW": "Curaçao", "CY": "Cyprus", "CZ": "Czech Republic",
+    "DK": "Denmark", "DJ": "Djibouti", "DM": "Dominica", "DO": "Dominican Republic",
+    "EC": "Ecuador", "EG": "Egypt", "SV": "El Salvador", "GQ": "Equatorial Guinea",
+    "ER": "Eritrea", "EE": "Estonia", "ET": "Ethiopia", "SZ": "Eswatini",
+    "FK": "Falkland Islands (Malvinas)", "FO": "Faroe Islands", "FJ": "Fiji",
+    "FI": "Finland", "FR": "France", "GF": "French Guiana", "PF": "French Polynesia",
+    "TF": "French Southern Territories", "GA": "Gabon", "GM": "Republic of The Gambia",
+    "GE": "Georgia", "DE": "Germany", "GH": "Ghana", "GI": "Gibraltar", "GR": "Greece",
+    "GL": "Greenland", "GD": "Grenada", "GP": "Guadeloupe", "GU": "Guam",
+    "GT": "Guatemala", "GG": "Guernsey", "GN": "Guinea", "GW": "Guinea-Bissau",
+    "GY": "Guyana", "HT": "Haiti", "HM": "Heard Island and McDonald Islands",
+    "VA": "Holy See (Vatican City State)", "HN": "Honduras", "HK": "Hong Kong",
+    "HU": "Hungary", "IS": "Iceland", "IN": "India", "ID": "Indonesia",
+    "IR": "Islamic Republic of Iran", "IQ": "Iraq", "IE": "Ireland", "IM": "Isle of Man",
+    "IL": "Israel", "IT": "Italy", "JM": "Jamaica", "JP": "Japan", "JE": "Jersey",
+    "JO": "Jordan", "KZ": "Kazakhstan", "KE": "Kenya", "KI": "Kiribati",
+    "KP": "North Korea", "KR": "South Korea", "XK": "Kosovo", "KW": "Kuwait",
+    "KG": "Kyrgyzstan", "LA": "Lao People's Democratic Republic", "LV": "Latvia",
+    "LB": "Lebanon", "LS": "Lesotho", "LR": "Liberia", "LY": "Libya",
+    "LI": "Liechtenstein", "LT": "Lithuania", "LU": "Luxembourg", "MO": "Macao",
+    "MG": "Madagascar", "MW": "Malawi", "MY": "Malaysia", "MV": "Maldives", "ML": "Mali",
+    "MT": "Malta", "MH": "Marshall Islands", "MQ": "Martinique", "MR": "Mauritania",
+    "MU": "Mauritius", "YT": "Mayotte", "MX": "Mexico",
+    "FM": "Micronesia, Federated States of", "MD": "Moldova, Republic of", "MC": "Monaco",
+    "MN": "Mongolia", "ME": "Montenegro", "MS": "Montserrat", "MA": "Morocco",
+    "MZ": "Mozambique", "MM": "Myanmar", "NA": "Namibia", "NR": "Nauru", "NP": "Nepal",
+    "NL": "Netherlands", "NC": "New Caledonia", "NZ": "New Zealand", "NI": "Nicaragua",
+    "NE": "Niger", "NG": "Nigeria", "NU": "Niue", "NF": "Norfolk Island",
+    "MK": "North Macedonia", "MP": "Northern Mariana Islands", "NO": "Norway",
+    "OM": "Oman", "PK": "Pakistan", "PW": "Palau", "PS": "State of Palestine",
+    "PA": "Panama", "PG": "Papua New Guinea", "PY": "Paraguay", "PE": "Peru",
+    "PH": "Philippines", "PN": "Pitcairn", "PL": "Poland", "PT": "Portugal",
+    "PR": "Puerto Rico", "QA": "Qatar", "RE": "Reunion", "RO": "Romania",
+    "RU": "Russian Federation", "RW": "Rwanda", "BL": "Saint Barthélemy",
+    "SH": "Saint Helena", "KN": "Saint Kitts and Nevis", "LC": "Saint Lucia",
+    "MF": "Saint Martin (French part)", "PM": "Saint Pierre and Miquelon",
+    "VC": "Saint Vincent and the Grenadines", "WS": "Samoa", "SM": "San Marino",
+    "ST": "Sao Tome and Principe", "SA": "Saudi Arabia", "SN": "Senegal", "RS": "Serbia",
+    "SC": "Seychelles", "SL": "Sierra Leone", "SG": "Singapore",
+    "SX": "Sint Maarten (Dutch part)", "SK": "Slovakia", "SI": "Slovenia",
+    "SB": "Solomon Islands", "SO": "Somalia", "ZA": "South Africa",
+    "GS": "South Georgia and the South Sandwich Islands", "SS": "South Sudan",
+    "ES": "Spain", "LK": "Sri Lanka", "SD": "Sudan", "SR": "Suriname",
+    "SJ": "Svalbard and Jan Mayen", "SE": "Sweden", "CH": "Switzerland",
+    "SY": "Syrian Arab Republic", "TW": "Taiwan, Province of China",
+    "TJ": "Tajikistan", "TZ": "United Republic of Tanzania", "TH": "Thailand",
+    "TL": "Timor-Leste", "TG": "Togo", "TK": "Tokelau", "TO": "Tonga",
+    "TT": "Trinidad and Tobago", "TN": "Tunisia", "TR": "Türkiye",
+    "TM": "Turkmenistan", "TC": "Turks and Caicos Islands", "TV": "Tuvalu",
+    "UG": "Uganda", "UA": "Ukraine", "AE": "United Arab Emirates",
+    "GB": "United Kingdom", "US": "United States of America",
+    "UM": "United States Minor Outlying Islands", "UY": "Uruguay", "UZ": "Uzbekistan",
+    "VU": "Vanuatu", "VE": "Venezuela", "VN": "Vietnam",
+    "VG": "Virgin Islands, British", "VI": "Virgin Islands, U.S.",
+    "WF": "Wallis and Futuna", "EH": "Western Sahara", "YE": "Yemen",
+    "ZM": "Zambia", "ZW": "Zimbabwe"
+  };
+
+  /**
+   * Convert an ISO 3166-1 alpha-2 country code to an HTML string with a flag icon and full
+   * country name, matching how Stash displays countries on performer pages.
+   * Uses the flag-icons CSS library (fi fi-{code}) already loaded by Stash.
+   * Country names match the i18n-iso-countries English locale used by Stash.
+   * @param {string} countryCode - Two-letter ISO country code (e.g., "US")
+   * @returns {string} HTML string with flag icon span and country name (e.g., '<span class="fi fi-us"></span> United States of America')
+   */
+  function getCountryDisplay(countryCode) {
+    if (!countryCode) return "";
+    const code = countryCode.toUpperCase().trim();
+    const name = COUNTRY_NAMES[code] || code.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
+    const flagClass = `fi fi-${code.toLowerCase().replace(/[^a-z]/g, "")}`;
+    return `<span class="${flagClass}"></span> ${name}`;
+  }
+
+  // ============================================
   // GRAPHQL QUERIES
   // ============================================
 
   async function graphqlQuery(query, variables = {}) {
+    // Use Stash's Apollo client when available (preferred method for Stash plugins)
+    // This ensures authentication is handled automatically and avoids Apollo context errors
+    if (
+      typeof PluginApi !== "undefined" &&
+      PluginApi.utils &&
+      PluginApi.utils.StashService &&
+      typeof PluginApi.utils.StashService.getClient === "function" &&
+      PluginApi.libraries &&
+      PluginApi.libraries.Apollo
+    ) {
+      try {
+        const { gql } = PluginApi.libraries.Apollo;
+        const client = PluginApi.utils.StashService.getClient();
+        const doc = gql(query);
+        const isMutation = doc.definitions.some(
+          (def) => def.kind === "OperationDefinition" && def.operation === "mutation"
+        );
+        const result = isMutation
+          ? await client.mutate({ mutation: doc, variables })
+          : await client.query({ query: doc, variables, fetchPolicy: "no-cache" });
+        return result.data;
+      } catch (apolloError) {
+        // Fall back to direct fetch when Apollo client is unavailable or in an invalid
+        // state (e.g., clearStore called during an in-progress query/mutation)
+        console.warn("[HotOrNot] Apollo client error, falling back to fetch:", apolloError?.message || apolloError);
+      }
+    }
+    // Fallback: direct fetch (for environments where PluginApi is not available)
     const response = await fetch("/graphql", {
       method: "POST",
       headers: {
@@ -2626,7 +2751,7 @@ async function fetchPerformerCount(performerFilter = {}) {
             <div class="hon-performer-meta hon-scene-meta">
               ${birthdate ? `<div class="hon-meta-item"><strong>Birthdate:</strong> ${birthdate}</div>` : ''}
               ${ethnicity ? `<div class="hon-meta-item"><strong>Ethnicity:</strong> ${ethnicity}</div>` : ''}
-              ${country ? `<div class="hon-meta-item"><strong>Country:</strong> ${country}</div>` : ''}
+              ${country ? `<div class="hon-meta-item"><strong>Country:</strong> ${getCountryDisplay(country)}</div>` : ''}
               <div class="hon-meta-item"><strong>Scenes:</strong> ${sceneCount}</div>
               <div class="hon-meta-item"><strong>Rating:</strong> ${enhancedRating}</div>
               ${statsDisplay}
