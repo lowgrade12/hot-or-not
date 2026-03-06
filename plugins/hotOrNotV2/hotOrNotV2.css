@@ -1654,3 +1654,48 @@
 .hon-meta-item .hon-streak-icon {
   margin-left: 4px;
 }
+
+/* Gender Filter */
+.hon-gender-filter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.hon-gender-filter-label {
+  font-size: 0.9rem;
+  color: #888;
+  flex-shrink: 0;
+}
+
+.hon-gender-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hon-gender-btn {
+  padding: 5px 12px;
+  border: 2px solid #444;
+  background: transparent;
+  color: #aaa;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.hon-gender-btn:hover {
+  border-color: #666;
+  color: #fff;
+}
+
+.hon-gender-btn.active {
+  background: #198754;
+  border-color: #198754;
+  color: #fff;
+}
