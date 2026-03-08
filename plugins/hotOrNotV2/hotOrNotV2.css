@@ -592,23 +592,6 @@
   }
 }
 
-#hon-floating-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
-  color: white;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
-  z-index: 9999;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
 @media (max-width: 580px) {
   #hon-floating-btn {
     bottom: 60px;
